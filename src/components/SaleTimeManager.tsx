@@ -9,7 +9,8 @@ import { toast } from "sonner";
 import { CalendarIcon, Clock, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, parseISO, setHours, setMinutes, setSeconds } from "date-fns";
-import { toZonedTime, toUtc } from 'date-fns-tz';
+import { toZonedTime } from 'date-fns-tz/toZonedTime'; // Corrected based on TS error 1
+import { toUtc } from 'date-fns-tz'; // Corrected based on TS error 2
 
 const IST_TIMEZONE = 'Asia/Kolkata'; // Indian Standard Time
 
