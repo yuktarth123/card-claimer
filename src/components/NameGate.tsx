@@ -13,7 +13,7 @@ export function NameGate({ open, onSubmit }: Props) {
   const [value, setValue] = useState("");
   return (
     <Dialog open={open}>
-      <DialogContent className="sm:max-w-sm" hideClose>
+      <DialogContent className="sm:max-w-sm [&>button]:hidden" onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
         <DialogHeader>
           <div className="mx-auto w-14 h-14 rounded-full gradient-gold flex items-center justify-center mb-2 shadow-glow">
             <Sparkles className="w-7 h-7 text-primary-foreground" />
