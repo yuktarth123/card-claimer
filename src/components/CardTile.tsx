@@ -6,6 +6,7 @@ import { Sparkles, Check, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Card = Database["public"]["Tables"]["cards"]["Row"];
+type SaleStatus = Database["public"]["Tables"]["app_settings"]["Row"]["sale_status"];
 
 interface Props {
   card: Card;
@@ -13,12 +14,14 @@ interface Props {
   onClaim: (card: Card) => void;
   onUnclaim: (card: Card) => void;
   disabled?: boolean;
+  saleStatus: SaleStatus; // New prop for sale status
 }
 
-export function CardTile({ card, isMine, onClaim, onUnclaim, disabled }: Props) {
+export function CardTile({ card, isMine, onClaim, onUnclaim, disabled, saleStatus }: Props) {
   const claimed = card.status === "claimed";
-  // Prioritize uploaded photo_url over tcg_image_url
   const img = card.photo_url || card.tcg_image_url;
+
+  const isClaimButtonDisabled = disabled || saleStatus === "preview";
 
   return (
     <div
@@ -90,10 +93,13 @@ export function CardTile({ card, isMine, onClaim, onUnclaim, disabled }: Props) 
             <Button
               size="sm"
               onClick={() => onClaim(card)}
-              disabled={disabled}
-              className="gradient-gold text-primary-foreground hover:opacity-90 font-bold shadow-glow animate-pulse-glow"
+              disabled={isClaimButtonDisabled}
+              className={cn(
+                "text-primary-foreground font-bold",
+                isClaimButtonDisabled ? "bg-muted-foreground/50 cursor-not-allowed" : "gradient-gold hover:opacity-90 shadow-glow animate-pulse-glow"
+              )}
             >
-              Claim
+              {saleStatus === "preview" ? "Preview" : "Claim"}
             </Button>
           )}
         </div>

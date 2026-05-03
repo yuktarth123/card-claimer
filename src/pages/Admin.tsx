@@ -7,10 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Camera, Upload, Search, Trash2, Plus, X, Loader2, Sparkles, Lock } from "lucide-react";
+import { Camera, Upload, Search, Trash2, Plus, X, Loader2, Sparkles, Lock, Eye } from "lucide-react";
 import { CURRENCY, USD_TO_INR_RATE } from "@/config";
+import { Switch } from "@/components/ui/switch";
 
 type DbCard = Database["public"]["Tables"]["cards"]["Row"];
+type SaleStatus = Database["public"]["Tables"]["app_settings"]["Row"]["sale_status"];
 
 const Admin = () => {
   const [cards, setCards] = useState<DbCard[]>([]);
@@ -23,17 +25,43 @@ const Admin = () => {
   const [results, setResults] = useState<TCGCard[]>([]);
   const [selectedTcg, setSelectedTcg] = useState<TCGCard | null>(null);
   const [publishing, setPublishing] = useState(false);
+  const [saleStatus, setSaleStatus] = useState<SaleStatus>("preview"); // Default to preview
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    supabase
-      .from("cards")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .then(({ data }) => data && setCards(data));
+    const fetchSettingsAndCards = async () => {
+      // Fetch sale status
+      const { data: settingsData, error: settingsError } = await supabase
+        .from("app_settings")
+        .select("sale_status")
+        .eq("id", 1)
+        .single();
+
+      if (settingsError) {
+        console.error("Error fetching app settings:", settingsError);
+        toast.error("Failed to load app settings.");
+      } else if (settingsData) {
+        setSaleStatus(settingsData.sale_status);
+      }
+
+      // Fetch cards
+      const { data: cardsData, error: cardsError } = await supabase
+        .from("cards")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (cardsError) {
+        console.error("Error fetching cards:", cardsError);
+        toast.error("Failed to load cards.");
+      } else if (cardsData) {
+        setCards(cardsData);
+      }
+    };
+
+    fetchSettingsAndCards();
 
     const channel = supabase
-      .channel("admin-cards")
+      .channel("admin-changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "cards" }, () => {
         supabase
           .from("cards")
@@ -41,7 +69,12 @@ const Admin = () => {
           .order("created_at", { ascending: false })
           .then(({ data }) => data && setCards(data));
       })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "app_settings", filter: "id=eq.1" }, (payload) => {
+        setSaleStatus((payload.new as Database["public"]["Tables"]["app_settings"]["Row"]).sale_status);
+        toast.info(`Sale status changed to: ${payload.new.sale_status.toUpperCase()}`);
+      })
       .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
     };
@@ -166,6 +199,22 @@ const Admin = () => {
     }
   };
 
+  const toggleSaleStatus = async (checked: boolean) => {
+    const newStatus: SaleStatus = checked ? "live" : "preview";
+    const { error } = await supabase
+      .from("app_settings")
+      .update({ sale_status: newStatus })
+      .eq("id", 1);
+
+    if (error) {
+      toast.error("Failed to update sale status.");
+      console.error("Error updating sale status:", error);
+    } else {
+      setSaleStatus(newStatus);
+      toast.success(`Sale is now ${newStatus.toUpperCase()}`);
+    }
+  };
+
   return (
     <div className="min-h-screen pb-12">
       <header className="border-b border-border">
@@ -192,6 +241,24 @@ const Admin = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Sale Status Toggle */}
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-border">
+              <div className="flex items-center gap-3">
+                <Eye className="w-5 h-5 text-muted-foreground" />
+                <div>
+                  <p className="font-semibold">Sale Status</p>
+                  <p className="text-sm text-muted-foreground">
+                    Currently: <span className="font-bold text-primary">{saleStatus.toUpperCase()}</span>
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={saleStatus === "live"}
+                onCheckedChange={toggleSaleStatus}
+                aria-label="Toggle sale status"
+              />
+            </div>
+
             {/* Photo */}
             <div className="space-y-2">
               <Label>Card Photo</Label>

@@ -6,32 +6,52 @@ import { NameGate } from "@/components/NameGate";
 import { CheckoutSheet } from "@/components/CheckoutSheet";
 import { useBuyer } from "@/hooks/useBuyer";
 import { toast } from "sonner";
-import { Sparkles, Zap } from "lucide-react";
+import { Sparkles, Zap, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type Card = Database["public"]["Tables"]["cards"]["Row"];
-
-type Filter = "all" | "available" | "mine";
+type SaleStatus = Database["public"]["Tables"]["app_settings"]["Row"]["sale_status"];
+type Filter = "all" | "available" | "mine"; // Define the Filter type
 
 const Index = () => {
   const { name, sessionId, setName } = useBuyer();
   const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("all");
+  const [saleStatus, setSaleStatus] = useState<SaleStatus>("preview"); // Default to preview
 
   useEffect(() => {
     let mounted = true;
-    supabase
-      .from("cards")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .then(({ data }) => {
-        if (mounted && data) setCards(data);
-        setLoading(false);
-      });
+
+    const fetchInitialData = async () => {
+      // Fetch sale status
+      const { data: settingsData, error: settingsError } = await supabase
+        .from("app_settings")
+        .select("sale_status")
+        .eq("id", 1)
+        .single();
+
+      if (settingsError) {
+        console.error("Error fetching app settings:", settingsError);
+        toast.error("Failed to load app settings.");
+      } else if (settingsData) {
+        setSaleStatus(settingsData.sale_status);
+      }
+
+      // Fetch cards
+      const { data: cardsData, error: cardsError } = await supabase
+        .from("cards")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (mounted && cardsData) setCards(cardsData);
+      setLoading(false);
+    };
+
+    fetchInitialData();
 
     const channel = supabase
-      .channel("cards-live")
+      .channel("index-changes")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "cards" },
@@ -50,6 +70,10 @@ const Index = () => {
           });
         }
       )
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "app_settings", filter: "id=eq.1" }, (payload) => {
+        setSaleStatus((payload.new as Database["public"]["Tables"]["app_settings"]["Row"]).sale_status);
+        toast.info(`Sale status changed to: ${payload.new.sale_status.toUpperCase()}`);
+      })
       .subscribe();
 
     return () => {
@@ -70,6 +94,10 @@ const Index = () => {
   }, [cards, filter, myCards]);
 
   const handleClaim = async (card: Card) => {
+    if (saleStatus === "preview") {
+      toast.info("The sale hasn't started yet! Stay tuned.");
+      return;
+    }
     if (!name) return;
     const { error } = await supabase.rpc("claim_card", {
       _card_id: card.id,
@@ -96,7 +124,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen pb-32">
-      <NameGate open={!name} onSubmit={setName} />
+      <NameGate open={!name && saleStatus === "live"} onSubmit={setName} />
 
       {/* Hero */}
       <header className="relative overflow-hidden border-b border-border">
@@ -114,13 +142,21 @@ const Index = () => {
             Pokémon Cards <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Live Sale</span>
           </h1>
           <p className="text-muted-foreground mt-2 max-w-xl">
-            First trainer to claim wins the card. Tap to lock it in — everyone sees it instantly.
+            {saleStatus === "preview"
+              ? "Get ready! Preview cards now, the live sale starts soon. First-come, first-served when it goes live!"
+              : "First trainer to claim wins the card. Tap to lock it in — everyone sees it instantly."}
           </p>
           <div className="flex flex-wrap items-center gap-2 mt-5">
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/15 border border-success/30">
               <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
               <span className="text-sm font-semibold text-success">{availableCount} available</span>
             </div>
+            {saleStatus === "preview" && (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/15 border border-primary/30">
+                <Eye className="w-3.5 h-3.5 text-primary" />
+                <span className="text-sm font-semibold text-primary">Preview Mode</span>
+              </div>
+            )}
             {name && (
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted border border-border">
                 <Zap className="w-3.5 h-3.5 text-primary" />
@@ -172,7 +208,8 @@ const Index = () => {
                 isMine={c.buyer_session_id === sessionId && c.status === "claimed"}
                 onClaim={handleClaim}
                 onUnclaim={handleUnclaim}
-                disabled={!name}
+                disabled={!name && saleStatus === "live"} // Disable if no name AND sale is live
+                saleStatus={saleStatus} // Pass sale status
               />
             ))}
           </div>
