@@ -38,8 +38,13 @@ export async function searchPokemonCards(query: string): Promise<TCGCard[]> {
     const cardNumber = setNumberMatch[2];
     apiQuery = `q=set.id:${setCode} number:${cardNumber}`;
   } else {
-    // Fallback to a broader search across all fields if no specific pattern is found
-    apiQuery = `q=${encodeURIComponent(query)}`;
+    // If the query already contains a colon, assume it's a field-specific query (e.g., "rarity:Rare")
+    // Otherwise, assume it's a card name and wrap it in 'name:"..."'
+    if (query.includes(':')) {
+      apiQuery = `q=${encodeURIComponent(query)}`;
+    } else {
+      apiQuery = `q=name:"${encodeURIComponent(query)}"`;
+    }
   }
 
   const url = `${BASE}/cards?${apiQuery}&pageSize=12&orderBy=-set.releaseDate`;
