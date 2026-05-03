@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { CalendarIcon, Clock, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, parseISO, setHours, setMinutes, setSeconds } from "date-fns";
-import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz';
+import { toZonedTime, toUtc } from 'date-fns-tz';
 
 const IST_TIMEZONE = 'Asia/Kolkata'; // Indian Standard Time
 
@@ -37,12 +37,12 @@ export function SaleTimeManager() {
     } else if (data?.sale_start_time) {
       // Convert UTC time from Supabase to IST for display
       const utcDate = parseISO(data.sale_start_time);
-      const istDate = utcToZonedTime(utcDate, IST_TIMEZONE);
+      const istDate = toZonedTime(utcDate, IST_TIMEZONE);
       setSaleStartTime(istDate);
       setTimeInput(format(istDate, "HH:mm"));
     } else {
       // If no time is set, default to current date in IST
-      const nowInIST = utcToZonedTime(new Date(), IST_TIMEZONE);
+      const nowInIST = toZonedTime(new Date(), IST_TIMEZONE);
       setSaleStartTime(nowInIST);
       setTimeInput(format(nowInIST, "HH:mm"));
     }
@@ -55,7 +55,7 @@ export function SaleTimeManager() {
       return;
     }
     // Preserve time when changing date
-    const currentSaleTime = saleStartTime || utcToZonedTime(new Date(), IST_TIMEZONE);
+    const currentSaleTime = saleStartTime || toZonedTime(new Date(), IST_TIMEZONE);
     const newDateWithTime = setSeconds(setMinutes(setHours(date, currentSaleTime.getHours()), currentSaleTime.getMinutes()), 0);
     setSaleStartTime(newDateWithTime);
   };
@@ -79,7 +79,7 @@ export function SaleTimeManager() {
 
     setIsSaving(true);
     // Convert IST date to UTC for Supabase storage
-    const utcTimestamp = zonedTimeToUtc(saleStartTime, IST_TIMEZONE).toISOString();
+    const utcTimestamp = toUtc(saleStartTime, { timeZone: IST_TIMEZONE }).toISOString();
 
     const { error } = await supabase
       .from("app_settings")
@@ -130,7 +130,7 @@ export function SaleTimeManager() {
               id="sale-start-time"
               type="time"
               value={timeInput}
-              onChange={handleTimeChange}
+              onChange={(e) => handleTimeChange(e)}
               className="pl-9"
             />
             <Clock className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
