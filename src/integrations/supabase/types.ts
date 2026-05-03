@@ -62,21 +62,6 @@ export type Database = {
         }
         Relationships: []
       }
-      app_settings: {
-        Row: {
-          id: number
-          sale_status: string
-        }
-        Insert: {
-          id?: number
-          sale_status?: string
-        }
-        Update: {
-          id?: number
-          sale_status?: string
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never

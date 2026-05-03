@@ -6,7 +6,6 @@ import { Sparkles, Check, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Card = Database["public"]["Tables"]["cards"]["Row"];
-type SaleStatus = Database["public"]["Tables"]["app_settings"]["Row"]["sale_status"];
 
 interface Props {
   card: Card;
@@ -14,14 +13,14 @@ interface Props {
   onClaim: (card: Card) => void;
   onUnclaim: (card: Card) => void;
   disabled?: boolean;
-  saleStatus: SaleStatus; // New prop for sale status
+  isSaleLive: boolean; // New prop for sale live status
 }
 
-export function CardTile({ card, isMine, onClaim, onUnclaim, disabled, saleStatus }: Props) {
+export function CardTile({ card, isMine, onClaim, onUnclaim, disabled, isSaleLive }: Props) {
   const claimed = card.status === "claimed";
   const img = card.photo_url || card.tcg_image_url;
 
-  const isClaimButtonDisabled = disabled || saleStatus === "preview";
+  const isClaimButtonDisabled = disabled || !isSaleLive;
 
   return (
     <div
@@ -99,7 +98,7 @@ export function CardTile({ card, isMine, onClaim, onUnclaim, disabled, saleStatu
                 isClaimButtonDisabled ? "bg-muted-foreground/50 cursor-not-allowed" : "gradient-gold hover:opacity-90 shadow-glow animate-pulse-glow"
               )}
             >
-              {saleStatus === "preview" ? "Preview" : "Claim"}
+              {isSaleLive ? "Claim" : "Coming Soon"}
             </Button>
           )}
         </div>
