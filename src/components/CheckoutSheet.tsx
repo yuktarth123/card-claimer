@@ -1,11 +1,11 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription, SheetFooter } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { ShoppingBag, MessageCircle, X, AlertTriangle } from "lucide-react";
+import { ShoppingBag, MessageCircle, X, AlertTriangle, Truck } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
-import { CURRENCY, SELLER_NAME, SELLER_WHATSAPP, CLAIM_DURATION_MINUTES } from "@/config";
+import { CURRENCY, SELLER_NAME, SELLER_WHATSAPP, CLAIM_DURATION_MINUTES, FREE_SHIPPING_THRESHOLD } from "@/config";
 import { addMinutes, isPast } from "date-fns";
 import { useMemo } from "react";
-import ClaimCountdown from "./ClaimCountdown"; // Import ClaimCountdown
+import ClaimCountdown from "./ClaimCountdown";
 
 type Card = Database["public"]["Tables"]["cards"]["Row"];
 
@@ -20,7 +20,7 @@ export function CheckoutSheet({ myCards, buyerName, onUnclaim }: Props) {
 
   const message = `Hi ${SELLER_NAME}! I'm ${buyerName}.\n\nI've claimed ${myCards.length} card${myCards.length === 1 ? "" : "s"}:\n${myCards
     .map((c, i) => `${i + 1}. ${c.name}${c.card_set ? ` (${c.card_set})` : ""} — ${CURRENCY}${Number(c.price).toFixed(0)}`)
-    .join("\n")}\n\nTotal: ${CURRENCY}${total.toFixed(0)}\n\nPlease share payment details. 🙏`;
+    .join("\n")}\n\nTotal: ${CURRENCY}${total.toFixed(0)}\n\n${total >= FREE_SHIPPING_THRESHOLD ? "Good news! Your order qualifies for FREE shipping!" : `Add ${CURRENCY}${FREE_SHIPPING_THRESHOLD - total} more for FREE shipping!`}\n\nPlease share payment details. 🙏`;
 
   const waLink = `https://wa.me/${SELLER_WHATSAPP}?text=${encodeURIComponent(message)}`;
 
@@ -52,6 +52,10 @@ export function CheckoutSheet({ myCards, buyerName, onUnclaim }: Props) {
             <p className="text-xs text-muted-foreground mt-1">
               <AlertTriangle className="inline-block w-3 h-3 mr-1 text-primary" />
               Cards must be purchased within {CLAIM_DURATION_MINUTES} minutes of claiming.
+            </p>
+            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+              <Truck className="inline-block w-3 h-3 text-secondary" />
+              Free shipping for orders above {CURRENCY}{FREE_SHIPPING_THRESHOLD}!
             </p>
           </SheetDescription>
         </SheetHeader>
@@ -91,6 +95,18 @@ export function CheckoutSheet({ myCards, buyerName, onUnclaim }: Props) {
             <span className="text-muted-foreground">Total</span>
             <span className="text-2xl font-black text-primary">{CURRENCY}{total.toFixed(0)}</span>
           </div>
+          {total < FREE_SHIPPING_THRESHOLD && (
+            <p className="text-sm text-muted-foreground flex items-center gap-1 justify-center">
+              <Truck className="w-4 h-4 text-secondary" />
+              Add {CURRENCY}{FREE_SHIPPING_THRESHOLD - total} more for FREE shipping!
+            </p>
+          )}
+          {total >= FREE_SHIPPING_THRESHOLD && (
+            <p className="text-sm text-success flex items-center gap-1 justify-center">
+              <Truck className="w-4 h-4" />
+              Your order qualifies for FREE shipping!
+            </p>
+          )}
           {hasExpiredCards && (
             <p className="text-sm text-destructive flex items-center gap-1 justify-center">
               <AlertTriangle className="w-4 h-4" /> Some claimed cards have expired. Please unclaim them.
