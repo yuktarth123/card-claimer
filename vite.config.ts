@@ -20,6 +20,11 @@ export default defineConfig(({ mode }) => ({
     dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime", "@tanstack/react-query", "@tanstack/query-core"],
   },
   optimizeDeps: {
-    include: ["@tanstack/query-core"], // Explicitly include for pre-bundling
+    include: ["@tanstack/query-core"],
+  },
+  build: {
+    rollupOptions: {
+      external: ["@tanstack/query-core"], // Explicitly mark as external for Rollup
+    },
   },
 }));
