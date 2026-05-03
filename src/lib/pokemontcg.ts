@@ -30,7 +30,7 @@ export async function searchPokemonCards(query: string): Promise<TCGCard[]> {
   if (!query.trim()) return [];
 
   let apiQuery = "";
-  // Attempt to parse query as "SET_CODE CARD_NUMBER" (e.g., "M2 114")
+  // Attempt to parse query as "SET_CODE CARD_NUMBER" (e.g., "base1 4")
   const setNumberMatch = query.match(/^(\w+)\s+(\d+)$/);
 
   if (setNumberMatch) {
@@ -42,9 +42,12 @@ export async function searchPokemonCards(query: string): Promise<TCGCard[]> {
     apiQuery = `q=${encodeURIComponent(query)}`;
   }
 
-  const res = await fetch(`${BASE}/cards?${apiQuery}&pageSize=12&orderBy=-set.releaseDate`);
+  const url = `${BASE}/cards?${apiQuery}&pageSize=12&orderBy=-set.releaseDate`;
+  console.log("Fetching TCG cards from:", url); // Log the full URL for debugging
+
+  const res = await fetch(url);
   if (!res.ok) {
-    console.error("Failed to fetch TCG cards:", res.status, res.statusText);
+    console.error("Failed to fetch TCG cards:", res.status, res.statusText, "URL:", url); // Include URL in error log
     return [];
   }
   const data = await res.json();

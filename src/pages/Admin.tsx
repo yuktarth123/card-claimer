@@ -214,7 +214,7 @@ const Admin = () => {
               <Label>Auto-fill from Pokémon TCG</Label>
               <div className="flex gap-2">
                 <Input
-                  placeholder="e.g. Charizard, 114 M2"
+                  placeholder="e.g. Charizard, base1 4 (for Base Set Charizard)" // Updated placeholder
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && runSearch()}
