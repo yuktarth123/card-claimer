@@ -16,8 +16,10 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      // Removed the explicit alias for @tanstack/query-core
     },
     dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime", "@tanstack/react-query", "@tanstack/query-core"],
+  },
+  optimizeDeps: {
+    include: ["@tanstack/query-core"], // Explicitly include for pre-bundling
   },
 }));
