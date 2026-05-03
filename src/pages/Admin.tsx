@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Camera, Upload, Search, Trash2, Plus, X, Loader2, Sparkles } from "lucide-react";
+import { Camera, Upload, Search, Trash2, Plus, X, Loader2, Sparkles, Lock } from "lucide-react";
 import { CURRENCY, USD_TO_INR_RATE } from "@/config";
 
 type DbCard = Database["public"]["Tables"]["cards"]["Row"];
@@ -146,6 +146,26 @@ const Admin = () => {
     else toast("Deleted");
   };
 
+  const handleAdminUnclaim = async (cardId: string) => {
+    if (!confirm("Are you sure you want to unclaim this card and make it available again?")) return;
+    const { error } = await supabase
+      .from("cards")
+      .update({
+        status: "available",
+        claimed_by: null,
+        buyer_session_id: null,
+        claimed_at: null,
+      })
+      .eq("id", cardId);
+
+    if (error) {
+      toast.error("Failed to unclaim card.");
+      console.error("Error unclaiming card:", error);
+    } else {
+      toast.success("Card successfully unclaimed and made available.");
+    }
+  };
+
   return (
     <div className="min-h-screen pb-12">
       <header className="border-b border-border">
@@ -214,7 +234,7 @@ const Admin = () => {
               <Label>Auto-fill from Pokémon TCG</Label>
               <div className="flex gap-2">
                 <Input
-                  placeholder="e.g. Charizard, base1 4 (for Base Set Charizard)" // Updated placeholder
+                  placeholder="e.g. Charizard, base1 4 (for Base Set Charizard)"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && runSearch()}
@@ -297,9 +317,16 @@ const Admin = () => {
                       <p className="text-xs text-muted-foreground mt-0.5">Available</p>
                     )}
                   </div>
-                  <Button size="icon" variant="ghost" onClick={() => remove(c.id)}>
-                    <Trash2 className="w-4 h-4 text-destructive" />
-                  </Button>
+                  <div className="flex gap-1">
+                    {c.status === "claimed" && (
+                      <Button size="icon" variant="ghost" onClick={() => handleAdminUnclaim(c.id)}>
+                        <Lock className="w-4 h-4 text-primary" />
+                      </Button>
+                    )}
+                    <Button size="icon" variant="ghost" onClick={() => remove(c.id)}>
+                      <Trash2 className="w-4 h-4 text-destructive" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
