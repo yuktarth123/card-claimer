@@ -1,8 +1,11 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription, SheetFooter } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { ShoppingBag, MessageCircle, X } from "lucide-react";
+import { ShoppingBag, MessageCircle, X, AlertTriangle } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
-import { CURRENCY, SELLER_NAME, SELLER_WHATSAPP } from "@/config";
+import { CURRENCY, SELLER_NAME, SELLER_WHATSAPP, CLAIM_DURATION_MINUTES } from "@/config";
+import { addMinutes, isPast } from "date-fns";
+import { useMemo } from "react";
+import ClaimCountdown from "./ClaimCountdown"; // Import ClaimCountdown
 
 type Card = Database["public"]["Tables"]["cards"]["Row"];
 
@@ -21,6 +24,15 @@ export function CheckoutSheet({ myCards, buyerName, onUnclaim }: Props) {
 
   const waLink = `https://wa.me/${SELLER_WHATSAPP}?text=${encodeURIComponent(message)}`;
 
+  const hasExpiredCards = useMemo(() => {
+    return myCards.some(card => {
+      if (!card.claimed_at) return false;
+      const claimedDate = new Date(card.claimed_at);
+      const expiryDate = addMinutes(claimedDate, CLAIM_DURATION_MINUTES);
+      return isPast(expiryDate);
+    });
+  }, [myCards]);
+
   return (
     <Sheet>
       <SheetTrigger asChild>
@@ -37,6 +49,10 @@ export function CheckoutSheet({ myCards, buyerName, onUnclaim }: Props) {
           <SheetTitle>Your Claims</SheetTitle>
           <SheetDescription>
             {buyerName ? `Claiming as ${buyerName}` : "Cards you've claimed in this sale"}
+            <p className="text-xs text-muted-foreground mt-1">
+              <AlertTriangle className="inline-block w-3 h-3 mr-1 text-primary" />
+              Cards must be purchased within {CLAIM_DURATION_MINUTES} minutes of claiming.
+            </p>
           </SheetDescription>
         </SheetHeader>
 
@@ -55,7 +71,12 @@ export function CheckoutSheet({ myCards, buyerName, onUnclaim }: Props) {
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold truncate">{c.name}</p>
                   <p className="text-xs text-muted-foreground truncate">{c.card_set}</p>
-                  <p className="text-sm font-bold text-primary">{CURRENCY}{Number(c.price).toFixed(0)}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-bold text-primary">{CURRENCY}{Number(c.price).toFixed(0)}</p>
+                    {c.claimed_at && (
+                      <ClaimCountdown claimedAt={c.claimed_at} onExpired={() => onUnclaim(c)} className="text-[10px] px-1.5 py-0.5" />
+                    )}
+                  </div>
                 </div>
                 <Button size="icon" variant="ghost" onClick={() => onUnclaim(c)}>
                   <X className="w-4 h-4" />
@@ -70,9 +91,14 @@ export function CheckoutSheet({ myCards, buyerName, onUnclaim }: Props) {
             <span className="text-muted-foreground">Total</span>
             <span className="text-2xl font-black text-primary">{CURRENCY}{total.toFixed(0)}</span>
           </div>
+          {hasExpiredCards && (
+            <p className="text-sm text-destructive flex items-center gap-1 justify-center">
+              <AlertTriangle className="w-4 h-4" /> Some claimed cards have expired. Please unclaim them.
+            </p>
+          )}
           <Button
             asChild
-            disabled={myCards.length === 0}
+            disabled={myCards.length === 0 || hasExpiredCards}
             className="w-full h-12 bg-success hover:bg-success/90 text-success-foreground font-bold text-base"
           >
             <a href={waLink} target="_blank" rel="noopener noreferrer">

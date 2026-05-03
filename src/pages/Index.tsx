@@ -6,9 +6,10 @@ import { NameGate } from "@/components/NameGate";
 import { CheckoutSheet } from "@/components/CheckoutSheet";
 import { useBuyer } from "@/hooks/useBuyer";
 import { toast } from "sonner";
-import { Sparkles, Zap } from "lucide-react";
+import { Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CountdownTimer from "@/components/CountdownTimer";
+import { SELLER_NAME } from "@/config"; // Import SELLER_NAME
 // SALE_START_TIME is now fetched from Supabase, not from config.ts
 
 type Card = Database["public"]["Tables"]["cards"]["Row"];
@@ -152,10 +153,10 @@ const Index = () => {
         <div className="relative container py-8 md:py-12">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-10 h-10 rounded-xl gradient-gold flex items-center justify-center shadow-glow">
-              <Sparkles className="w-5 h-5 text-primary-foreground" />
+              <img src="/yanks-tcg-logo.png" alt="Yanks TCG Logo" className="w-full h-full object-contain p-1" />
             </div>
             <span className="font-bold tracking-wide text-sm uppercase text-muted-foreground">
-              Live TCG Drop
+              {SELLER_NAME}
             </span>
           </div>
           <h1 className="text-3xl md:text-5xl font-black text-balance">
@@ -220,7 +221,7 @@ const Index = () => {
           </div>
         ) : visible.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">
-            <Sparkles className="w-12 h-12 mx-auto mb-3 opacity-40" />
+            <img src="/yanks-tcg-logo.png" alt="Yanks TCG Logo" className="w-12 h-12 mx-auto mb-3 opacity-40 object-contain" />
             <p className="text-lg">No cards here yet. Check back soon!</p>
           </div>
         ) : (

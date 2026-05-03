@@ -1,9 +1,11 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CURRENCY } from "@/config";
+import { CURRENCY, CLAIM_DURATION_MINUTES } from "@/config";
 import { Database } from "@/integrations/supabase/types";
 import { Sparkles, Check, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import ClaimCountdown from "./ClaimCountdown"; // Import the new component
+import { addMinutes, isPast } from "date-fns";
 
 type Card = Database["public"]["Tables"]["cards"]["Row"];
 
@@ -22,12 +24,22 @@ export function CardTile({ card, isMine, onClaim, onUnclaim, disabled, isSaleLiv
 
   const isClaimButtonDisabled = disabled || !isSaleLive;
 
+  const claimedAtDate = card.claimed_at ? new Date(card.claimed_at) : null;
+  const isClaimExpired = claimedAtDate ? isPast(addMinutes(claimedAtDate, CLAIM_DURATION_MINUTES)) : false;
+
+  const handleUnclaimOnExpire = () => {
+    if (isMine && isClaimExpired) {
+      onUnclaim(card);
+    }
+  };
+
   return (
     <div
       className={cn(
         "group relative overflow-hidden rounded-2xl gradient-card-bg border border-border shadow-card-pop animate-fade-in transition-all",
         claimed && !isMine && "opacity-60 grayscale",
         isMine && "ring-2 ring-success shadow-claim",
+        isMine && isClaimExpired && "ring-2 ring-destructive shadow-none opacity-80" // Visual for expired claim
       )}
     >
       <div className="aspect-[3/4] w-full overflow-hidden bg-muted relative">
@@ -58,8 +70,13 @@ export function CardTile({ card, isMine, onClaim, onUnclaim, disabled, isSaleLiv
           </div>
         )}
         {isMine && (
-          <div className="absolute top-2 left-2 bg-success text-success-foreground px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1 animate-claim-pop shadow-claim">
-            <Check className="w-3 h-3" /> Yours
+          <div className="absolute top-2 left-2 flex items-center gap-1">
+            <div className="bg-success text-success-foreground px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1 animate-claim-pop shadow-claim">
+              <Check className="w-3 h-3" /> Yours
+            </div>
+            {card.claimed_at && (
+              <ClaimCountdown claimedAt={card.claimed_at} onExpired={handleUnclaimOnExpire} />
+            )}
           </div>
         )}
       </div>
@@ -80,9 +97,9 @@ export function CardTile({ card, isMine, onClaim, onUnclaim, disabled, isSaleLiv
               size="sm"
               variant="outline"
               onClick={() => onUnclaim(card)}
-              disabled={disabled}
+              disabled={disabled || isClaimExpired} // Disable unclaim if expired
             >
-              Unclaim
+              {isClaimExpired ? "Expired" : "Unclaim"}
             </Button>
           ) : claimed ? (
             <Button size="sm" disabled variant="secondary">

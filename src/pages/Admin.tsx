@@ -7,9 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Camera, Upload, Search, Trash2, Plus, X, Loader2, Sparkles, Lock, Clock } from "lucide-react";
-import { CURRENCY, USD_TO_INR_RATE } from "@/config";
-import { SaleTimeManager } from "@/components/SaleTimeManager"; // Import the new component
+import { Camera, Upload, Search, Trash2, Plus, X, Loader2, Lock, Clock } from "lucide-react";
+import { CURRENCY, USD_TO_INR_RATE, SELLER_NAME } from "@/config"; // Import SELLER_NAME
+import { SaleTimeManager } from "@/components/SaleTimeManager";
 
 type DbCard = Database["public"]["Tables"]["cards"]["Row"];
 
@@ -184,10 +184,10 @@ const Admin = () => {
         <div className="container py-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl gradient-gold flex items-center justify-center shadow-glow">
-              <Sparkles className="w-5 h-5 text-primary-foreground" />
+              <img src="/yanks-tcg-logo.png" alt="Yanks TCG Logo" className="w-full h-full object-contain p-1" />
             </div>
             <div>
-              <h1 className="text-xl font-black">Seller Console</h1>
+              <h1 className="text-xl font-black">{SELLER_NAME} Console</h1>
               <p className="text-xs text-muted-foreground">Quick-list cards for the live drop</p>
             </div>
           </div>
@@ -286,7 +286,7 @@ const Admin = () => {
               )}
               {selectedTcg && (
                 <div className="flex items-center gap-2 text-xs p-2 rounded bg-primary/10 border border-primary/30">
-                  <Sparkles className="w-3.5 h-3.5 text-primary" />
+                  <img src="/yanks-tcg-logo.png" alt="Yanks TCG Logo" className="w-3.5 h-3.5 object-contain" />
                   <span>{selectedTcg.set?.name} • {selectedTcg.rarity || "—"} • #{selectedTcg.number}</span>
                   <button onClick={() => setSelectedTcg(null)} className="ml-auto text-muted-foreground"><X className="w-3.5 h-3.5" /></button>
                 </div>
