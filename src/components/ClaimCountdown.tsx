@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { formatDistanceToNowStrict, addMinutes, isPast } from 'date-fns';
+import { addMinutes, isPast, parseISO } from 'date-fns'; // Import parseISO
 import { Clock } from 'lucide-react';
 import { CLAIM_DURATION_MINUTES } from '@/config';
 
@@ -15,7 +15,18 @@ const ClaimCountdown: React.FC<ClaimCountdownProps> = ({ claimedAt, onExpired, c
   const [isExpired, setIsExpired] = useState(false);
 
   useEffect(() => {
-    const claimedDate = new Date(claimedAt);
+    const claimedDate = parseISO(claimedAt); // Use parseISO for robust parsing
+
+    // Check if claimedDate is a valid date object
+    if (isNaN(claimedDate.getTime())) {
+      console.error("ClaimCountdown received an invalid claimedAt date string:", claimedAt);
+      setIsExpired(true);
+      setTimeLeft("Invalid Date");
+      // We don't call onExpired here, as an invalid date is not the same as an expired claim.
+      // The component will simply display "Invalid Date".
+      return;
+    }
+
     const expiryDate = addMinutes(claimedDate, CLAIM_DURATION_MINUTES);
 
     const calculateTime = () => {
