@@ -9,8 +9,7 @@ import { toast } from "sonner";
 import { CalendarIcon, Clock, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, parseISO, setHours, setMinutes, setSeconds } from "date-fns";
-import { toZonedTime } from 'date-fns-tz/toZonedTime'; // Named export from sub-path
-import { toUtc } from 'date-fns-tz/toUtc'; // Named export from sub-path
+import { toZonedTime, fromZonedTime } from 'date-fns-tz'; // Changed to fromZonedTime
 
 const IST_TIMEZONE = 'Asia/Kolkata'; // Indian Standard Time
 
@@ -80,7 +79,7 @@ export function SaleTimeManager() {
 
     setIsSaving(true);
     // Convert IST date to UTC for Supabase storage
-    const utcTimestamp = toUtc(saleStartTime, { timeZone: IST_TIMEZONE }).toISOString();
+    const utcTimestamp = fromZonedTime(saleStartTime, IST_TIMEZONE).toISOString(); // Changed to fromZonedTime
 
     const { error } = await supabase
       .from("app_settings")
