@@ -3,3 +3,4 @@
 export const SELLER_WHATSAPP = "910000000000";
 export const SELLER_NAME = "Yuktarth";
 export const CURRENCY = "₹";
+export const USD_TO_INR_RATE = 83.5; // Approximate conversion rate for USD to INR

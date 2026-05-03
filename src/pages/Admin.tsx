@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Camera, Upload, Search, Trash2, Plus, X, Loader2, Sparkles } from "lucide-react";
-import { CURRENCY } from "@/config";
+import { CURRENCY, USD_TO_INR_RATE } from "@/config";
 
 type DbCard = Database["public"]["Tables"]["cards"]["Row"];
 
@@ -69,6 +69,22 @@ const Admin = () => {
     setSelectedTcg(c);
     setName(c.name);
     setResults([]);
+
+    // Auto-populate price with USD to INR conversion
+    let usdPrice: number | undefined;
+    if (c.tcgplayer?.prices?.averageSellPrice) {
+      usdPrice = c.tcgplayer.prices.averageSellPrice;
+    } else if (c.cardmarket?.prices?.averageSellPrice) {
+      usdPrice = c.cardmarket.prices.averageSellPrice;
+    }
+
+    if (usdPrice) {
+      const inrPrice = usdPrice * USD_TO_INR_RATE;
+      setPrice(inrPrice.toFixed(0)); // Set as string, rounded to nearest whole number
+      toast.success(`Price auto-filled: ${CURRENCY}${inrPrice.toFixed(0)}`);
+    } else {
+      toast.info("No price found for this card from TCG API.");
+    }
   };
 
   const reset = () => {
@@ -198,7 +214,7 @@ const Admin = () => {
               <Label>Auto-fill from Pokémon TCG</Label>
               <div className="flex gap-2">
                 <Input
-                  placeholder="e.g. Charizard"
+                  placeholder="e.g. Charizard, 114 M2"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && runSearch()}
