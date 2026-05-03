@@ -10,6 +10,7 @@ import { Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CountdownTimer from "@/components/CountdownTimer";
 import { SELLER_NAME } from "@/config"; // Import SELLER_NAME
+import AppLogo from "@/components/AppLogo"; // Import AppLogo
 // SALE_START_TIME is now fetched from Supabase, not from config.ts
 
 type Card = Database["public"]["Tables"]["cards"]["Row"];
@@ -153,7 +154,7 @@ const Index = () => {
         <div className="relative container py-8 md:py-12">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-10 h-10 rounded-xl gradient-gold flex items-center justify-center shadow-glow">
-              <img src="/yanks-tcg-logo.png" alt="Yanks TCG Logo" className="w-full h-full object-contain" />
+              <AppLogo className="w-full h-full" alt="Yanks TCG Logo" />
             </div>
             <span className="font-bold tracking-wide text-sm uppercase text-muted-foreground">
               {SELLER_NAME}
@@ -221,7 +222,7 @@ const Index = () => {
           </div>
         ) : visible.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">
-            <img src="/yanks-tcg-logo.png" alt="Yanks TCG Logo" className="w-12 h-12 mx-auto mb-3 opacity-40 object-contain" />
+            <AppLogo className="w-12 h-12 mx-auto mb-3 opacity-40" alt="Yanks TCG Logo" />
             <p className="text-lg">No cards here yet. Check back soon!</p>
           </div>
         ) : (

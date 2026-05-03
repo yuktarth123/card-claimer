@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { Camera, Upload, Search, Trash2, Plus, X, Loader2, Lock, Clock } from "lucide-react";
 import { CURRENCY, USD_TO_INR_RATE, SELLER_NAME } from "@/config"; // Import SELLER_NAME
 import { SaleTimeManager } from "@/components/SaleTimeManager";
+import AppLogo from "@/components/AppLogo"; // Import AppLogo
 
 type DbCard = Database["public"]["Tables"]["cards"]["Row"];
 
@@ -184,7 +185,7 @@ const Admin = () => {
         <div className="container py-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl gradient-gold flex items-center justify-center shadow-glow">
-              <img src="/yanks-tcg-logo.png" alt="Yanks TCG Logo" className="w-full h-full object-contain" />
+              <AppLogo className="w-full h-full" alt="Yanks TCG Logo" />
             </div>
             <div>
               <h1 className="text-xl font-black">{SELLER_NAME} Console</h1>
@@ -286,7 +287,7 @@ const Admin = () => {
               )}
               {selectedTcg && (
                 <div className="flex items-center gap-2 text-xs p-2 rounded bg-primary/10 border border-primary/30">
-                  <img src="/yanks-tcg-logo.png" alt="Yanks TCG Logo" className="w-3.5 h-3.5 object-contain" />
+                  <AppLogo className="w-3.5 h-3.5" alt="Yanks TCG Logo" />
                   <span>{selectedTcg.set?.name} • {selectedTcg.rarity || "—"} • #{selectedTcg.number}</span>
                   <button onClick={() => setSelectedTcg(null)} className="ml-auto text-muted-foreground"><X className="w-3.5 h-3.5" /></button>
                 </div>
