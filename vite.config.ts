@@ -24,7 +24,7 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     rollupOptions: {
-      external: ["@tanstack/query-core"], // Explicitly mark as external for Rollup
+      // Removed @tanstack/query-core from external
     },
   },
 }));
