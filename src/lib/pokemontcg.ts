@@ -6,16 +6,14 @@ export interface TCGCard {
   name: string;
   number?: string;
   rarity?: string;
-  set?: { name?: string; series?: string };
+  set?: { name?: string; series?: string; id?: string }; // Added set.id for more precise searching
   images?: { small?: string; large?: string };
-  // Add price information from TCGPlayer and Cardmarket
   tcgplayer?: {
     prices?: {
       averageSellPrice?: number;
       lowPrice?: number;
       highPrice?: number;
       marketPrice?: number;
-      // Add other price types if needed
     };
   };
   cardmarket?: {
@@ -24,17 +22,31 @@ export interface TCGCard {
       lowPrice?: number;
       highPrice?: number;
       marketPrice?: number;
-      // Add other price types if needed
     };
   };
 }
 
 export async function searchPokemonCards(query: string): Promise<TCGCard[]> {
   if (!query.trim()) return [];
-  // Use a broader query to search across multiple fields
-  const q = encodeURIComponent(query);
-  const res = await fetch(`${BASE}/cards?q=${q}&pageSize=12&orderBy=-set.releaseDate`);
-  if (!res.ok) return [];
+
+  let apiQuery = "";
+  // Attempt to parse query as "SET_CODE CARD_NUMBER" (e.g., "M2 114")
+  const setNumberMatch = query.match(/^(\w+)\s+(\d+)$/);
+
+  if (setNumberMatch) {
+    const setCode = setNumberMatch[1].toLowerCase(); // API set IDs are often lowercase
+    const cardNumber = setNumberMatch[2];
+    apiQuery = `q=set.id:${setCode} number:${cardNumber}`;
+  } else {
+    // Fallback to a broader search across all fields if no specific pattern is found
+    apiQuery = `q=${encodeURIComponent(query)}`;
+  }
+
+  const res = await fetch(`${BASE}/cards?${apiQuery}&pageSize=12&orderBy=-set.releaseDate`);
+  if (!res.ok) {
+    console.error("Failed to fetch TCG cards:", res.status, res.statusText);
+    return [];
+  }
   const data = await res.json();
   return data.data || [];
 }
