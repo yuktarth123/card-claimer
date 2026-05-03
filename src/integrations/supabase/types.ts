@@ -14,13 +14,107 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      cards: {
+        Row: {
+          buyer_session_id: string | null
+          card_number: string | null
+          card_set: string | null
+          claimed_at: string | null
+          claimed_by: string | null
+          created_at: string
+          id: string
+          name: string
+          photo_url: string | null
+          price: number
+          rarity: string | null
+          status: string
+          tcg_image_url: string | null
+        }
+        Insert: {
+          buyer_session_id?: string | null
+          card_number?: string | null
+          card_set?: string | null
+          claimed_at?: string | null
+          claimed_by?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          photo_url?: string | null
+          price?: number
+          rarity?: string | null
+          status?: string
+          tcg_image_url?: string | null
+        }
+        Update: {
+          buyer_session_id?: string | null
+          card_number?: string | null
+          card_set?: string | null
+          claimed_at?: string | null
+          claimed_by?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          photo_url?: string | null
+          price?: number
+          rarity?: string | null
+          status?: string
+          tcg_image_url?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      claim_card: {
+        Args: { _buyer_name: string; _card_id: string; _session_id: string }
+        Returns: {
+          buyer_session_id: string | null
+          card_number: string | null
+          card_set: string | null
+          claimed_at: string | null
+          claimed_by: string | null
+          created_at: string
+          id: string
+          name: string
+          photo_url: string | null
+          price: number
+          rarity: string | null
+          status: string
+          tcg_image_url: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "cards"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      unclaim_card: {
+        Args: { _card_id: string; _session_id: string }
+        Returns: {
+          buyer_session_id: string | null
+          card_number: string | null
+          card_set: string | null
+          claimed_at: string | null
+          claimed_by: string | null
+          created_at: string
+          id: string
+          name: string
+          photo_url: string | null
+          price: number
+          rarity: string | null
+          status: string
+          tcg_image_url: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "cards"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       [_ in never]: never
