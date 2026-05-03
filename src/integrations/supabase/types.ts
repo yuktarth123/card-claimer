@@ -14,6 +14,21 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          id: number
+          sale_start_time: string | null
+        }
+        Insert: {
+          id?: number
+          sale_start_time?: string | null
+        }
+        Update: {
+          id?: number
+          sale_start_time?: string | null
+        }
+        Relationships: []
+      }
       cards: {
         Row: {
           buyer_session_id: string | null

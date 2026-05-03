@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { Sparkles, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CountdownTimer from "@/components/CountdownTimer";
-import { SALE_START_TIME } from "@/config";
+// SALE_START_TIME is now fetched from Supabase, not from config.ts
 
 type Card = Database["public"]["Tables"]["cards"]["Row"];
 type Filter = "all" | "available" | "mine";
@@ -20,27 +20,48 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("all");
   const [isSaleLive, setIsSaleLive] = useState(false);
+  const [saleStartTime, setSaleStartTime] = useState<string | null>(null); // State for sale start time from DB
 
   useEffect(() => {
     let mounted = true;
 
-    const fetchInitialCards = async () => {
+    const fetchInitialData = async () => {
+      // Fetch cards
       const { data: cardsData, error: cardsError } = await supabase
         .from("cards")
         .select("*")
         .order("created_at", { ascending: false });
 
       if (mounted && cardsData) setCards(cardsData);
+      if (cardsError) console.error("Error fetching cards:", cardsError);
+
+      // Fetch sale start time
+      const { data: settingsData, error: settingsError } = await supabase
+        .from("app_settings")
+        .select("sale_start_time")
+        .eq("id", 1)
+        .single();
+
+      if (mounted) {
+        if (settingsError && settingsError.code !== 'PGRST116') {
+          console.error("Error fetching app settings:", settingsError);
+          toast.error("Failed to load sale settings.");
+        } else if (settingsData?.sale_start_time) {
+          setSaleStartTime(settingsData.sale_start_time);
+          setIsSaleLive(new Date() >= new Date(settingsData.sale_start_time));
+        } else {
+          // If no sale_start_time is set, sale is not live
+          setSaleStartTime(null);
+          setIsSaleLive(false);
+        }
+      }
       setLoading(false);
     };
 
-    fetchInitialCards();
+    fetchInitialData();
 
-    // Determine initial sale live status
-    setIsSaleLive(new Date() >= new Date(SALE_START_TIME));
-
-    const channel = supabase
-      .channel("index-changes")
+    const cardsChannel = supabase
+      .channel("index-cards-changes")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "cards" },
@@ -61,9 +82,23 @@ const Index = () => {
       )
       .subscribe();
 
+    const settingsChannel = supabase
+      .channel("index-settings-changes")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "app_settings", filter: "id=eq.1" },
+        (payload) => {
+          const newSaleStartTime = (payload.new as Database["public"]["Tables"]["app_settings"]["Row"]).sale_start_time;
+          setSaleStartTime(newSaleStartTime);
+          setIsSaleLive(newSaleStartTime ? new Date() >= new Date(newSaleStartTime) : false);
+        }
+      )
+      .subscribe();
+
     return () => {
       mounted = false;
-      supabase.removeChannel(channel);
+      supabase.removeChannel(cardsChannel);
+      supabase.removeChannel(settingsChannel);
     };
   }, []);
 
@@ -136,9 +171,14 @@ const Index = () => {
               <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
               <span className="text-sm font-semibold text-success">{availableCount} available</span>
             </div>
-            {!isSaleLive && (
+            {!isSaleLive && saleStartTime && ( // Only show countdown if saleStartTime is set and not live
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/15 border border-primary/30">
-                <CountdownTimer targetDate={SALE_START_TIME} onCountdownEnd={() => setIsSaleLive(true)} className="text-primary" />
+                <CountdownTimer targetDate={saleStartTime} onCountdownEnd={() => setIsSaleLive(true)} className="text-primary" />
+              </div>
+            )}
+            {!isSaleLive && !saleStartTime && ( // Show message if saleStartTime is not set
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/15 border border-primary/30">
+                <span className="text-sm font-semibold text-primary">Sale time not set yet!</span>
               </div>
             )}
             {name && (

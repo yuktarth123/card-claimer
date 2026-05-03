@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Camera, Upload, Search, Trash2, Plus, X, Loader2, Sparkles, Lock } from "lucide-react";
+import { Camera, Upload, Search, Trash2, Plus, X, Loader2, Sparkles, Lock, Clock } from "lucide-react";
 import { CURRENCY, USD_TO_INR_RATE } from "@/config";
+import { SaleTimeManager } from "@/components/SaleTimeManager"; // Import the new component
 
 type DbCard = Database["public"]["Tables"]["cards"]["Row"];
 
@@ -195,6 +196,18 @@ const Admin = () => {
       </header>
 
       <main className="container py-6 grid lg:grid-cols-2 gap-6">
+        {/* Sale Time Manager */}
+        <Card className="gradient-card-bg border-border lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="w-5 h-5 text-primary" /> Manage Sale Start Time
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <SaleTimeManager />
+          </CardContent>
+        </Card>
+
         {/* Quick list form */}
         <Card className="gradient-card-bg border-border">
           <CardHeader>
