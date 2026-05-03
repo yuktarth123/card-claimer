@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react'; // Import useRef
 import { cn } from '@/lib/utils';
-import { addMinutes, isPast, parseISO } from 'date-fns'; // Import parseISO
+import { addMinutes, isPast, parseISO } from 'date-fns';
 import { Clock } from 'lucide-react';
 import { CLAIM_DURATION_MINUTES } from '@/config';
 
@@ -14,26 +14,31 @@ const ClaimCountdown: React.FC<ClaimCountdownProps> = ({ claimedAt, onExpired, c
   const [timeLeft, setTimeLeft] = useState<string | null>(null);
   const [isExpired, setIsExpired] = useState(false);
 
+  // Use useRef to store the onExpired callback, preventing re-renders from re-triggering the effect
+  const onExpiredRef = useRef(onExpired);
   useEffect(() => {
-    const claimedDate = parseISO(claimedAt); // Use parseISO for robust parsing
+    onExpiredRef.current = onExpired;
+  }, [onExpired]);
 
-    // Check if claimedDate is a valid date object
+  useEffect(() => {
+    const claimedDate = parseISO(claimedAt);
+
     if (isNaN(claimedDate.getTime())) {
       console.error("ClaimCountdown received an invalid claimedAt date string:", claimedAt);
       setIsExpired(true);
       setTimeLeft("Invalid Date");
-      // We don't call onExpired here, as an invalid date is not the same as an expired claim.
-      // The component will simply display "Invalid Date".
       return;
     }
 
     const expiryDate = addMinutes(claimedDate, CLAIM_DURATION_MINUTES);
+    let timer: NodeJS.Timeout; // Declare timer here to be accessible in cleanup
 
     const calculateTime = () => {
       if (isPast(expiryDate)) {
         setIsExpired(true);
         setTimeLeft("Expired");
-        onExpired(); // Trigger the unclaim logic
+        clearInterval(timer); // Clear the interval immediately
+        onExpiredRef.current(); // Call the stored onExpired function
         return;
       }
 
@@ -47,10 +52,10 @@ const ClaimCountdown: React.FC<ClaimCountdownProps> = ({ claimedAt, onExpired, c
     };
 
     calculateTime(); // Initial calculation
-    const timer = setInterval(calculateTime, 1000);
+    timer = setInterval(calculateTime, 1000);
 
-    return () => clearInterval(timer);
-  }, [claimedAt, onExpired]);
+    return () => clearInterval(timer); // Cleanup on unmount or dependency change
+  }, [claimedAt]); // Removed onExpired from dependencies
 
   if (!timeLeft) return null;
 
