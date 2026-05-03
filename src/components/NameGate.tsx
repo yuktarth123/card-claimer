@@ -16,7 +16,7 @@ export function NameGate({ open, onSubmit }: Props) {
       <DialogContent className="sm:max-w-sm [&>button]:hidden" onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
         <DialogHeader>
           <div className="mx-auto w-14 h-14 rounded-full gradient-gold flex items-center justify-center mb-2 shadow-glow">
-            <img src="/yanks-tcg-logo.png" alt="Yanks TCG Logo" className="w-full h-full object-contain p-1" />
+            <img src="/yanks-tcg-logo.png" alt="Yanks TCG Logo" className="w-full h-full object-contain" />
           </div>
           <DialogTitle className="text-center text-2xl">Welcome, Trainer!</DialogTitle>
           <DialogDescription className="text-center">

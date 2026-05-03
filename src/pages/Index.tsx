@@ -153,7 +153,7 @@ const Index = () => {
         <div className="relative container py-8 md:py-12">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-10 h-10 rounded-xl gradient-gold flex items-center justify-center shadow-glow">
-              <img src="/yanks-tcg-logo.png" alt="Yanks TCG Logo" className="w-full h-full object-contain p-1" />
+              <img src="/yanks-tcg-logo.png" alt="Yanks TCG Logo" className="w-full h-full object-contain" />
             </div>
             <span className="font-bold tracking-wide text-sm uppercase text-muted-foreground">
               {SELLER_NAME}

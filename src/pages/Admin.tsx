@@ -184,7 +184,7 @@ const Admin = () => {
         <div className="container py-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl gradient-gold flex items-center justify-center shadow-glow">
-              <img src="/yanks-tcg-logo.png" alt="Yanks TCG Logo" className="w-full h-full object-contain p-1" />
+              <img src="/yanks-tcg-logo.png" alt="Yanks TCG Logo" className="w-full h-full object-contain" />
             </div>
             <div>
               <h1 className="text-xl font-black">{SELLER_NAME} Console</h1>
