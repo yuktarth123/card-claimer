@@ -21,6 +21,8 @@ export default defineConfig(({ mode }) => ({
     dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime"],
   },
   optimizeDeps: {
+    // Exclude date-fns-tz from pre-bundling to resolve import issues
+    exclude: ["date-fns-tz"],
     // Removed @tanstack/query-core from include
   },
   build: {
