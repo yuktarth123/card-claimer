@@ -17,7 +17,8 @@ interface Props {
 
 export function CardTile({ card, isMine, onClaim, onUnclaim, disabled }: Props) {
   const claimed = card.status === "claimed";
-  const img = card.tcg_image_url || card.photo_url;
+  // Prioritize uploaded photo_url over tcg_image_url
+  const img = card.photo_url || card.tcg_image_url;
 
   return (
     <div
