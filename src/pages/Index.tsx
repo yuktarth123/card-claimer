@@ -11,16 +11,25 @@ import { Button } from "@/components/ui/button";
 import CountdownTimer from "@/components/CountdownTimer";
 import { SELLER_NAME } from "@/config"; // Import SELLER_NAME
 import AppLogo from "@/components/AppLogo"; // Import AppLogo
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 // SALE_START_TIME is now fetched from Supabase, not from config.ts
 
 type Card = Database["public"]["Tables"]["cards"]["Row"];
 type Filter = "all" | "available" | "mine";
+type SortOrder = "none" | "price-asc" | "price-desc";
 
 const Index = () => {
   const { name, sessionId, setName } = useBuyer();
   const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("all");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("none"); // New state for sorting
   const [isSaleLive, setIsSaleLive] = useState(false);
   const [saleStartTime, setSaleStartTime] = useState<string | null>(null); // State for sale start time from DB
 
@@ -110,10 +119,23 @@ const Index = () => {
   );
 
   const visible = useMemo(() => {
-    if (filter === "available") return cards.filter((c) => c.status === "available");
-    if (filter === "mine") return myCards;
-    return cards;
-  }, [cards, filter, myCards]);
+    let filteredCards = cards;
+
+    if (filter === "available") {
+      filteredCards = cards.filter((c) => c.status === "available");
+    } else if (filter === "mine") {
+      filteredCards = myCards;
+    }
+
+    // Apply sorting
+    if (sortOrder === "price-asc") {
+      filteredCards = [...filteredCards].sort((a, b) => Number(a.price) - Number(b.price));
+    } else if (sortOrder === "price-desc") {
+      filteredCards = [...filteredCards].sort((a, b) => Number(b.price) - Number(a.price));
+    }
+
+    return filteredCards;
+  }, [cards, filter, myCards, sortOrder]); // Added sortOrder to dependencies
 
   const handleClaim = async (card: Card) => {
     if (!isSaleLive) {
@@ -195,8 +217,8 @@ const Index = () => {
       </header>
 
       <main className="container py-6">
-        {/* Filter pills */}
-        <div className="flex gap-2 mb-5 overflow-x-auto pb-1">
+        {/* Filter pills and Sort dropdown */}
+        <div className="flex flex-wrap items-center gap-2 mb-5 overflow-x-auto pb-1">
           {([
             { k: "all", label: `All (${cards.length})` },
             { k: "available", label: `Available (${availableCount})` },
@@ -212,6 +234,18 @@ const Index = () => {
               {f.label}
             </Button>
           ))}
+          <div className="ml-auto"> {/* Pushes the sort dropdown to the right */}
+            <Select value={sortOrder} onValueChange={(value: SortOrder) => setSortOrder(value)}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Sort by Price" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Default (Newest)</SelectItem>
+                <SelectItem value="price-asc">Price: Low to High</SelectItem>
+                <SelectItem value="price-desc">Price: High to Low</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {loading ? (
