@@ -19,7 +19,10 @@ export function CheckoutSheet({ myCards, buyerName, onUnclaim }: Props) {
   const total = myCards.reduce((s, c) => s + Number(c.price), 0);
 
   const message = `Hi ${SELLER_NAME}! I'm ${buyerName}.\n\nI've claimed ${myCards.length} card${myCards.length === 1 ? "" : "s"}:\n${myCards
-    .map((c, i) => `${i + 1}. ${c.name}${c.card_set ? ` (${c.card_set})` : ""} — ${CURRENCY}${Number(c.price).toFixed(0)}`)
+    .map((c, i) => {
+      const imageUrl = c.photo_url || c.tcg_image_url;
+      return `${i + 1}. ${c.name}${c.card_set ? ` (${c.card_set})` : ""} — ${CURRENCY}${Number(c.price).toFixed(0)}${imageUrl ? `\n${imageUrl}` : ''}`;
+    })
     .join("\n")}\n\nTotal: ${CURRENCY}${total.toFixed(0)}\n\n${total >= FREE_SHIPPING_THRESHOLD ? "Good news! Your order qualifies for FREE shipping!" : `Add ${CURRENCY}${FREE_SHIPPING_THRESHOLD - total} more for FREE shipping!`}\n\nPlease share payment details. 🙏`;
 
   const waLink = `https://wa.me/${SELLER_WHATSAPP}?text=${encodeURIComponent(message)}`;
