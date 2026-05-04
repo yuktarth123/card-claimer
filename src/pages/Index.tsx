@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CountdownTimer from "@/components/CountdownTimer";
-import { SELLER_NAME } from "@/config"; // Import SELLER_NAME
+import { CURRENCY, SELLER_NAME } from "@/config"; // Import CURRENCY and SELLER_NAME
 import AppLogo from "@/components/AppLogo"; // Import AppLogo
 import {
   Select,
@@ -137,6 +137,10 @@ const Index = () => {
     return filteredCards;
   }, [cards, filter, myCards, sortOrder]); // Added sortOrder to dependencies
 
+  const totalListedValue = useMemo(() => {
+    return cards.reduce((sum, card) => sum + Number(card.price), 0);
+  }, [cards]);
+
   const handleClaim = async (card: Card) => {
     if (!isSaleLive) {
       toast.info("The sale hasn't started yet! Stay tuned.");
@@ -194,6 +198,9 @@ const Index = () => {
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/15 border border-success/30">
               <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
               <span className="text-sm font-semibold text-success">{availableCount} available</span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/15 border border-border/30">
+              <span className="text-sm font-semibold text-muted-foreground">Total Listed: {CURRENCY}{totalListedValue.toFixed(0)}</span>
             </div>
             {!isSaleLive && saleStartTime && ( // Only show countdown if saleStartTime is set and not live
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/15 border border-primary/30">
