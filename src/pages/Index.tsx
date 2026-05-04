@@ -6,7 +6,7 @@ import { NameGate } from "@/components/NameGate";
 import { CheckoutSheet } from "@/components/CheckoutSheet";
 import { useBuyer } from "@/hooks/useBuyer";
 import { toast } from "sonner";
-import { Zap } from "lucide-react";
+import { Zap, DollarSign } from "lucide-react"; // Import DollarSign
 import { Button } from "@/components/ui/button";
 import CountdownTimer from "@/components/CountdownTimer";
 import { CURRENCY, SELLER_NAME } from "@/config"; // Import CURRENCY and SELLER_NAME
@@ -199,8 +199,9 @@ const Index = () => {
               <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
               <span className="text-sm font-semibold text-success">{availableCount} available</span>
             </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/15 border border-border/30">
-              <span className="text-sm font-semibold text-muted-foreground">Total Listed: {CURRENCY}{totalListedValue.toFixed(0)}</span>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/15 border border-primary/30">
+              <DollarSign className="w-3.5 h-3.5 text-primary" />
+              <span className="text-sm font-semibold text-primary">Total Listed: {CURRENCY}{totalListedValue.toFixed(0)}</span>
             </div>
             {!isSaleLive && saleStartTime && ( // Only show countdown if saleStartTime is set and not live
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/15 border border-primary/30">
