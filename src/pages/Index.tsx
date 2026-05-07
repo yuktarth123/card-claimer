@@ -6,11 +6,11 @@ import { NameGate } from "@/components/NameGate";
 import { CheckoutSheet } from "@/components/CheckoutSheet";
 import { useBuyer } from "@/hooks/useBuyer";
 import { toast } from "sonner";
-import { Zap } from "lucide-react"; // Removed DollarSign
+import { Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CountdownTimer from "@/components/CountdownTimer";
-import { CURRENCY, SELLER_NAME } from "@/config"; // Import CURRENCY and SELLER_NAME
-import AppLogo from "@/components/AppLogo"; // Import AppLogo
+import { CURRENCY, SELLER_NAME } from "@/config";
+import AppLogo from "@/components/AppLogo";
 import {
   Select,
   SelectContent,
@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-// SALE_START_TIME is now fetched from Supabase, not from config.ts
+import WhatsAppBanner from "@/components/WhatsAppBanner"; // Import the new banner component
 
 type Card = Database["public"]["Tables"]["cards"]["Row"];
 type Filter = "all" | "available" | "mine";
@@ -29,9 +29,9 @@ const Index = () => {
   const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("all");
-  const [sortOrder, setSortOrder] = useState<SortOrder>("none"); // New state for sorting
+  const [sortOrder, setSortOrder] = useState<SortOrder>("none");
   const [isSaleLive, setIsSaleLive] = useState(false);
-  const [saleStartTime, setSaleStartTime] = useState<string | null>(null); // State for sale start time from DB
+  const [saleStartTime, setSaleStartTime] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -135,7 +135,7 @@ const Index = () => {
     }
 
     return filteredCards;
-  }, [cards, filter, myCards, sortOrder]); // Added sortOrder to dependencies
+  }, [cards, filter, myCards, sortOrder]);
 
   const totalListedValue = useMemo(() => {
     return cards.reduce((sum, card) => sum + Number(card.price), 0);
@@ -202,12 +202,12 @@ const Index = () => {
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/15 border border-primary/30">
               <span className="text-sm font-semibold text-primary">Total Listed: {CURRENCY}{totalListedValue.toFixed(0)}</span>
             </div>
-            {!isSaleLive && saleStartTime && ( // Only show countdown if saleStartTime is set and not live
+            {!isSaleLive && saleStartTime && (
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/15 border border-primary/30">
                 <CountdownTimer targetDate={saleStartTime} onCountdownEnd={() => setIsSaleLive(true)} className="text-primary" />
               </div>
             )}
-            {!isSaleLive && !saleStartTime && ( // Show message if saleStartTime is not set
+            {!isSaleLive && !saleStartTime && (
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/15 border border-primary/30">
                 <span className="text-sm font-semibold text-primary">Sale time not set yet!</span>
               </div>
@@ -224,6 +224,8 @@ const Index = () => {
       </header>
 
       <main className="container py-6">
+        <WhatsAppBanner className="mb-6" /> {/* The new WhatsApp banner */}
+
         {/* Filter pills and Sort dropdown */}
         <div className="flex flex-wrap items-center gap-2 mb-5 overflow-x-auto pb-1">
           {([
@@ -241,7 +243,7 @@ const Index = () => {
               {f.label}
             </Button>
           ))}
-          <div className="ml-auto"> {/* Pushes the sort dropdown to the right */}
+          <div className="ml-auto">
             <Select value={sortOrder} onValueChange={(value: SortOrder) => setSortOrder(value)}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Sort by Price" />
@@ -275,8 +277,8 @@ const Index = () => {
                 isMine={c.buyer_session_id === sessionId && c.status === "claimed"}
                 onClaim={handleClaim}
                 onUnclaim={handleUnclaim}
-                disabled={!name && isSaleLive} // Disable if no name AND sale is live
-                isSaleLive={isSaleLive} // Pass sale live status
+                disabled={!name && isSaleLive}
+                isSaleLive={isSaleLive}
               />
             ))}
           </div>
