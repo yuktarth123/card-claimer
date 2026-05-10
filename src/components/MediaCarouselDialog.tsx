@@ -87,21 +87,22 @@ const MediaCarouselDialog: React.FC<MediaCarouselDialogProps> = ({
           <div className="overflow-hidden w-full h-full flex items-center justify-center" ref={emblaRef}>
             <div className="flex h-full">
               {mediaUrls.map((url, index) => (
-                <div key={index} className="embla__slide flex-none min-w-0 flex items-center justify-center h-full">
+                <div key={index} className="embla__slide flex-none min-w-0 flex items-center justify-center h-full w-full">
                   {url.match(/\.(mp4|webm|ogg)$/i) ? (
                     <video
                       src={url}
                       controls
                       autoPlay
                       loop
+                      muted
                       playsInline
-                      className="w-full h-full object-contain rounded-lg shadow-lg" // Changed max-h/w to w-full h-full
+                      className="w-full h-full object-contain rounded-lg shadow-lg"
                     />
                   ) : (
                     <img
                       src={url}
                       alt={`Card media ${index + 1}`}
-                      className="w-full h-full object-contain rounded-lg shadow-lg" // Changed max-h/w to w-full h-full
+                      className="w-full h-full object-contain rounded-lg shadow-lg"
                     />
                   )}
                 </div>
