@@ -73,7 +73,7 @@ const MediaCarouselDialog: React.FC<MediaCarouselDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-full h-full sm:max-w-full sm:h-full flex flex-col p-0 border-none bg-transparent">
+      <DialogContent className="fixed inset-0 max-w-none w-screen h-screen flex flex-col p-0 border-none bg-transparent">
         <Button
           variant="ghost"
           size="icon"
@@ -85,7 +85,7 @@ const MediaCarouselDialog: React.FC<MediaCarouselDialogProps> = ({
 
         <div className="relative flex-1 flex items-center justify-center">
           <div className="overflow-hidden w-full h-full flex items-center justify-center" ref={emblaRef}>
-            <div className="flex h-full">
+            <div className="flex h-full w-full"> {/* Added w-full here */}
               {mediaUrls.map((url, index) => (
                 <div key={index} className="embla__slide flex-none min-w-0 flex items-center justify-center h-full w-full">
                   {url.match(/\.(mp4|webm|ogg)$/i) ? (
