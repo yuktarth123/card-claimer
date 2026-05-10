@@ -20,7 +20,7 @@ interface Props {
 
 export function CardTile({ card, isMine, onClaim, onUnclaim, disabled, isSaleLive }: Props) {
   const claimed = card.status === "claimed";
-  const img = card.photo_url || card.tcg_image_url;
+  const mediaUrl = card.video_url || card.photo_url || card.tcg_image_url;
 
   const isClaimButtonDisabled = disabled || !isSaleLive;
 
@@ -43,13 +43,24 @@ export function CardTile({ card, isMine, onClaim, onUnclaim, disabled, isSaleLiv
       )}
     >
       <div className="aspect-[3/4] w-full overflow-hidden bg-muted relative">
-        {img ? (
-          <img
-            src={img}
-            alt={card.name}
-            loading="lazy"
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-          />
+        {mediaUrl ? (
+          card.video_url ? (
+            <video
+              src={card.video_url}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              autoPlay
+              loop
+              muted
+              playsInline
+            />
+          ) : (
+            <img
+              src={mediaUrl}
+              alt={card.name}
+              loading="lazy"
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            />
+          )
         ) : (
           <div className="w-full h-full flex items-center justify-center text-muted-foreground">
             <Sparkles className="w-10 h-10" />

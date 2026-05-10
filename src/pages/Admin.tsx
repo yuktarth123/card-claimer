@@ -7,11 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Camera, Upload, Search, Trash2, Plus, X, Loader2, Lock, Clock } from "lucide-react";
+import { Camera, Upload, Search, Trash2, Plus, X, Loader2, Lock, Clock, Edit, Video } from "lucide-react";
 import { CURRENCY, USD_TO_INR_RATE, SELLER_NAME } from "@/config"; // Import SELLER_NAME
 import { SaleTimeManager } from "@/components/SaleTimeManager";
 import AppLogo from "@/components/AppLogo"; // Import AppLogo
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Import Select components
+import { EditCardDialog } from "@/components/EditCardDialog"; // Import EditCardDialog
 
 type DbCard = Database["public"]["Tables"]["cards"]["Row"];
 
@@ -19,41 +20,43 @@ const Admin = () => {
   const [cards, setCards] = useState<DbCard[]>([]);
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
-  const [condition, setCondition] = useState<string>("Near Mint"); // New state for condition, default to 'Near Mint'
+  const [condition, setCondition] = useState<string>("Near Mint");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null); // New state for video file
+  const [videoPreview, setVideoPreview] = useState<string | null>(null); // New state for video preview
   const [search, setSearch] = useState("");
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<TCGCard[]>([]);
   const [selectedTcg, setSelectedTcg] = useState<TCGCard | null>(null);
   const [publishing, setPublishing] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const photoFileRef = useRef<HTMLInputElement>(null);
+  const videoFileRef = useRef<HTMLInputElement>(null); // Ref for video input
+
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingCard, setEditingCard] = useState<DbCard | null>(null);
+
+  const fetchCards = async () => {
+    const { data: cardsData, error: cardsError } = await supabase
+      .from("cards")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (cardsError) {
+      console.error("Error fetching cards:", cardsError);
+      toast.error("Failed to load cards.");
+    } else if (cardsData) {
+      setCards(cardsData);
+    }
+  };
 
   useEffect(() => {
-    const fetchCards = async () => {
-      const { data: cardsData, error: cardsError } = await supabase
-        .from("cards")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (cardsError) {
-        console.error("Error fetching cards:", cardsError);
-        toast.error("Failed to load cards.");
-      } else if (cardsData) {
-        setCards(cardsData);
-      }
-    };
-
     fetchCards();
 
     const channel = supabase
       .channel("admin-changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "cards" }, () => {
-        supabase
-          .from("cards")
-          .select("*")
-          .order("created_at", { ascending: false })
-          .then(({ data }) => data && setCards(data));
+        fetchCards(); // Re-fetch cards on any change
       })
       .subscribe();
 
@@ -72,6 +75,16 @@ const Admin = () => {
     }
   };
 
+  const onPickVideo = (file: File | null) => {
+    setVideoFile(file);
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setVideoPreview(url);
+    } else {
+      setVideoPreview(null);
+    }
+  };
+
   const runSearch = async () => {
     if (!search.trim()) return;
     setSearching(true);
@@ -85,7 +98,6 @@ const Admin = () => {
     setName(c.name);
     setResults([]);
 
-    // Auto-populate price with USD to INR conversion
     let usdPrice: number | undefined;
     if (c.tcgplayer?.prices?.averageSellPrice) {
       usdPrice = c.tcgplayer.prices.averageSellPrice;
@@ -95,23 +107,26 @@ const Admin = () => {
 
     if (usdPrice) {
       const inrPrice = usdPrice * USD_TO_INR_RATE;
-      setPrice(inrPrice.toFixed(0)); // Set as string, rounded to nearest whole number
+      setPrice(inrPrice.toFixed(0));
       toast.success(`Price auto-filled: ${CURRENCY}${inrPrice.toFixed(0)}`);
     } else {
       toast.info("No price found for this card from TCG API.");
     }
   };
 
-  const reset = () => {
+  const resetForm = () => {
     setName("");
     setPrice("");
-    setCondition("Near Mint"); // Reset condition to default
+    setCondition("Near Mint");
     setPhotoFile(null);
     setPhotoPreview(null);
+    setVideoFile(null);
+    setVideoPreview(null);
     setSearch("");
     setResults([]);
     setSelectedTcg(null);
-    if (fileRef.current) fileRef.current.value = "";
+    if (photoFileRef.current) photoFileRef.current.value = "";
+    if (videoFileRef.current) videoFileRef.current.value = "";
   };
 
   const publish = async () => {
@@ -121,9 +136,10 @@ const Admin = () => {
     }
     setPublishing(true);
     let photo_url: string | null = null;
+    let video_url: string | null = null;
 
     if (photoFile) {
-      const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${photoFile.name.split(".").pop() || "jpg"}`;
+      const path = `card-images/${Date.now()}-${Math.random().toString(36).slice(2)}.${photoFile.name.split(".").pop() || "jpg"}`;
       const { error: upErr } = await supabase.storage.from("card-images").upload(path, photoFile, {
         cacheControl: "3600",
         upsert: false,
@@ -137,11 +153,27 @@ const Admin = () => {
       photo_url = data.publicUrl;
     }
 
+    if (videoFile) {
+      const path = `card-videos/${Date.now()}-${Math.random().toString(36).slice(2)}.${videoFile.name.split(".").pop() || "mp4"}`;
+      const { error: upErr } = await supabase.storage.from("card-videos").upload(path, videoFile, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+      if (upErr) {
+        toast.error("Video upload failed");
+        setPublishing(false);
+        return;
+      }
+      const { data } = supabase.storage.from("card-videos").getPublicUrl(path);
+      video_url = data.publicUrl;
+    }
+
     const { error } = await supabase.from("cards").insert({
       name: name.trim(),
       price: Number(price),
-      condition: condition, // Include condition in the insert
+      condition: condition,
       photo_url,
+      video_url, // Include video_url in the insert
       tcg_image_url: selectedTcg?.images?.large || selectedTcg?.images?.small || null,
       card_set: selectedTcg?.set?.name || null,
       card_number: selectedTcg?.number || null,
@@ -152,7 +184,7 @@ const Admin = () => {
       toast.error("Couldn't publish");
     } else {
       toast.success(`Published ${name}!`);
-      reset();
+      resetForm();
     }
   };
 
@@ -181,6 +213,11 @@ const Admin = () => {
     } else {
       toast.success("Card successfully unclaimed and made available.");
     }
+  };
+
+  const handleEditClick = (card: DbCard) => {
+    setEditingCard(card);
+    setIsEditDialogOpen(true);
   };
 
   return (
@@ -221,7 +258,7 @@ const Admin = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Photo */}
+            {/* Photo Upload */}
             <div className="space-y-2">
               <Label>Card Photo</Label>
               {photoPreview ? (
@@ -241,18 +278,54 @@ const Admin = () => {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => fileRef.current?.click()}
+                    onClick={() => photoFileRef.current?.click()}
                     className="flex-1 min-w-[140px]"
                   >
-                    <Camera className="w-4 h-4 mr-2" /> Scan with Camera
+                    <Camera className="w-4 h-4 mr-2" /> Upload Photo
                   </Button>
                   <input
-                    ref={fileRef}
+                    ref={photoFileRef}
                     type="file"
                     accept="image/*"
                     capture="environment"
                     className="hidden"
                     onChange={(e) => onPickPhoto(e.target.files?.[0] || null)}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Video Upload */}
+            <div className="space-y-2">
+              <Label>Card Video (Optional)</Label>
+              {videoPreview ? (
+                <div className="relative aspect-[3/4] max-w-[200px] rounded-xl overflow-hidden border border-border bg-black flex items-center justify-center">
+                  <video src={videoPreview} controls className="w-full h-full object-contain" />
+                  <Button
+                    size="icon"
+                    variant="destructive"
+                    className="absolute top-2 right-2 h-7 w-7"
+                    onClick={() => onPickVideo(null)}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex gap-2 flex-wrap">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => videoFileRef.current?.click()}
+                    className="flex-1 min-w-[140px]"
+                  >
+                    <Video className="w-4 h-4 mr-2" /> Upload Video
+                  </Button>
+                  <input
+                    ref={videoFileRef}
+                    type="file"
+                    accept="video/*"
+                    className="hidden"
+                    onChange={(e) => onPickVideo(e.target.files?.[0] || null)}
                   />
                 </div>
               )}
@@ -347,8 +420,14 @@ const Admin = () => {
               )}
               {cards.map((c) => (
                 <div key={c.id} className="flex items-center gap-3 p-2 rounded-lg border border-border bg-background/40">
-                  {(c.tcg_image_url || c.photo_url) && (
-                    <img src={c.tcg_image_url || c.photo_url!} alt={c.name} className="w-12 h-16 object-cover rounded" />
+                  {(c.tcg_image_url || c.photo_url || c.video_url) && (
+                    <div className="w-12 h-16 flex-shrink-0 rounded overflow-hidden bg-muted flex items-center justify-center">
+                      {c.video_url ? (
+                        <video src={c.video_url} className="w-full h-full object-cover" muted playsInline />
+                      ) : (
+                        <img src={c.tcg_image_url || c.photo_url!} alt={c.name} className="w-full h-full object-cover" />
+                      )}
+                    </div>
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold truncate">{c.name}</p>
@@ -362,6 +441,9 @@ const Admin = () => {
                     )}
                   </div>
                   <div className="flex gap-1">
+                    <Button size="icon" variant="ghost" onClick={() => handleEditClick(c)}>
+                      <Edit className="w-4 h-4 text-muted-foreground" />
+                    </Button>
                     {c.status === "claimed" && (
                       <Button size="icon" variant="ghost" onClick={() => handleAdminUnclaim(c.id)}>
                         <Lock className="w-4 h-4 text-primary" />
@@ -377,6 +459,15 @@ const Admin = () => {
           </CardContent>
         </Card>
       </main>
+
+      {editingCard && (
+        <EditCardDialog
+          card={editingCard}
+          open={isEditDialogOpen}
+          onOpenChange={setIsEditDialogOpen}
+          onSave={fetchCards} // Re-fetch cards after saving
+        />
+      )}
     </div>
   );
 };
