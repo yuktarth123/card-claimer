@@ -7,12 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Camera, Upload, Search, Trash2, Plus, X, Loader2, Lock, Clock, Edit, Video } from "lucide-react";
-import { CURRENCY, USD_TO_INR_RATE, SELLER_NAME } from "@/config"; // Import SELLER_NAME
+import { Camera, Upload, Search, Trash2, Plus, X, Loader2, Lock, Clock, Edit, Video, Wrench } from "lucide-react"; // Added Wrench icon
+import { CURRENCY, USD_TO_INR_RATE, SELLER_NAME } from "@/config";
 import { SaleTimeManager } from "@/components/SaleTimeManager";
-import AppLogo from "@/components/AppLogo"; // Import AppLogo
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Import Select components
-import { EditCardDialog } from "@/components/EditCardDialog"; // Import EditCardDialog
+import AppLogo from "@/components/AppLogo";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { EditCardDialog } from "@/components/EditCardDialog";
 
 type DbCard = Database["public"]["Tables"]["cards"]["Row"];
 
@@ -23,15 +23,16 @@ const Admin = () => {
   const [condition, setCondition] = useState<string>("Near Mint");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const [videoFile, setVideoFile] = useState<File | null>(null); // New state for video file
-  const [videoPreview, setVideoPreview] = useState<string | null>(null); // New state for video preview
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<TCGCard[]>([]);
   const [selectedTcg, setSelectedTcg] = useState<TCGCard | null>(null);
   const [publishing, setPublishing] = useState(false);
+  const [isUpdatingConditions, setIsUpdatingConditions] = useState(false); // New state for condition update loading
   const photoFileRef = useRef<HTMLInputElement>(null);
-  const videoFileRef = useRef<HTMLInputElement>(null); // Ref for video input
+  const videoFileRef = useRef<HTMLInputElement>(null);
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<DbCard | null>(null);
@@ -173,7 +174,7 @@ const Admin = () => {
       price: Number(price),
       condition: condition,
       photo_url,
-      video_url, // Include video_url in the insert
+      video_url,
       tcg_image_url: selectedTcg?.images?.large || selectedTcg?.images?.small || null,
       card_set: selectedTcg?.set?.name || null,
       card_number: selectedTcg?.number || null,
@@ -220,6 +221,25 @@ const Admin = () => {
     setIsEditDialogOpen(true);
   };
 
+  const setDefaultConditions = async () => {
+    if (!confirm("Are you sure you want to set 'Near Mint' as the condition for ALL cards that currently have no condition set? This cannot be undone.")) return;
+
+    setIsUpdatingConditions(true);
+    const { error } = await supabase
+      .from("cards")
+      .update({ condition: "Near Mint" })
+      .is("condition", null); // Only update cards where condition is currently NULL
+
+    if (error) {
+      console.error("Error setting default conditions:", error);
+      toast.error("Failed to set default conditions.");
+    } else {
+      toast.success("All cards without a condition are now 'Near Mint'!");
+      fetchCards(); // Re-fetch to update the UI
+    }
+    setIsUpdatingConditions(false);
+  };
+
   return (
     <div className="min-h-screen pb-12">
       <header className="border-b border-border">
@@ -247,6 +267,32 @@ const Admin = () => {
           </CardHeader>
           <CardContent>
             <SaleTimeManager />
+          </CardContent>
+        </Card>
+
+        {/* Utility Card for default condition */}
+        <Card className="gradient-card-bg border-border lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Wrench className="w-5 h-5 text-primary" /> Utilities
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <Label>Set Default Card Conditions</Label>
+              <p className="text-sm text-muted-foreground">
+                Click this button to set the condition of all cards that currently have no condition specified to "Near Mint".
+              </p>
+              <Button
+                onClick={setDefaultConditions}
+                disabled={isUpdatingConditions}
+                variant="secondary"
+                className="w-full sm:w-auto"
+              >
+                {isUpdatingConditions ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                Set All Unspecified Conditions to "Near Mint"
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
@@ -466,7 +512,7 @@ const Admin = () => {
           card={editingCard}
           open={isEditDialogOpen}
           onOpenChange={setIsEditDialogOpen}
-          onSave={fetchCards} // Re-fetch cards after saving
+          onSave={fetchCards}
         />
       )}
     </div>
