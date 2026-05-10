@@ -87,6 +87,9 @@ export function CardTile({ card, isMine, onClaim, onUnclaim, disabled, isSaleLiv
           {card.card_set && (
             <p className="text-xs text-muted-foreground truncate">{card.card_set}</p>
           )}
+          {card.condition && (
+            <p className="text-xs text-muted-foreground truncate">Condition: {card.condition}</p>
+          )}
         </div>
         <div className="flex items-center justify-between gap-2">
           <span className="font-black text-lg text-primary">

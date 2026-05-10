@@ -36,6 +36,7 @@ export type Database = {
           card_set: string | null
           claimed_at: string | null
           claimed_by: string | null
+          condition: string | null
           created_at: string
           id: string
           name: string
@@ -51,6 +52,7 @@ export type Database = {
           card_set?: string | null
           claimed_at?: string | null
           claimed_by?: string | null
+          condition?: string | null
           created_at?: string
           id?: string
           name: string
@@ -66,6 +68,7 @@ export type Database = {
           card_set?: string | null
           claimed_at?: string | null
           claimed_by?: string | null
+          condition?: string | null
           created_at?: string
           id?: string
           name?: string

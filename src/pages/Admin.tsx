@@ -11,6 +11,7 @@ import { Camera, Upload, Search, Trash2, Plus, X, Loader2, Lock, Clock } from "l
 import { CURRENCY, USD_TO_INR_RATE, SELLER_NAME } from "@/config"; // Import SELLER_NAME
 import { SaleTimeManager } from "@/components/SaleTimeManager";
 import AppLogo from "@/components/AppLogo"; // Import AppLogo
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Import Select components
 
 type DbCard = Database["public"]["Tables"]["cards"]["Row"];
 
@@ -18,6 +19,7 @@ const Admin = () => {
   const [cards, setCards] = useState<DbCard[]>([]);
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
+  const [condition, setCondition] = useState<string>("Near Mint"); // New state for condition, default to 'Near Mint'
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -103,6 +105,7 @@ const Admin = () => {
   const reset = () => {
     setName("");
     setPrice("");
+    setCondition("Near Mint"); // Reset condition to default
     setPhotoFile(null);
     setPhotoPreview(null);
     setSearch("");
@@ -137,6 +140,7 @@ const Admin = () => {
     const { error } = await supabase.from("cards").insert({
       name: name.trim(),
       price: Number(price),
+      condition: condition, // Include condition in the insert
       photo_url,
       tcg_image_url: selectedTcg?.images?.large || selectedTcg?.images?.small || null,
       card_set: selectedTcg?.set?.name || null,
@@ -303,6 +307,21 @@ const Admin = () => {
                 <Label>Price ({CURRENCY})</Label>
                 <Input type="number" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="500" />
               </div>
+              <div className="col-span-2">
+                <Label htmlFor="condition">Condition</Label>
+                <Select value={condition} onValueChange={setCondition}>
+                  <SelectTrigger id="condition">
+                    <SelectValue placeholder="Select condition" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Near Mint">Near Mint</SelectItem>
+                    <SelectItem value="Lightly Played">Lightly Played</SelectItem>
+                    <SelectItem value="Moderately Played">Moderately Played</SelectItem>
+                    <SelectItem value="Heavily Played">Heavily Played</SelectItem>
+                    <SelectItem value="Damaged">Damaged</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <Button
@@ -334,7 +353,7 @@ const Admin = () => {
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold truncate">{c.name}</p>
                     <p className="text-xs text-muted-foreground truncate">
-                      {c.card_set || "—"} • {CURRENCY}{Number(c.price).toFixed(0)}
+                      {c.card_set || "—"} • {CURRENCY}{Number(c.price).toFixed(0)} • {c.condition || "N/A"}
                     </p>
                     {c.status === "claimed" ? (
                       <p className="text-xs text-success font-semibold mt-0.5">✓ Claimed by {c.claimed_by}</p>

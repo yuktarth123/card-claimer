@@ -21,7 +21,7 @@ export function CheckoutSheet({ myCards, buyerName, onUnclaim }: Props) {
   const message = `Hi ${SELLER_NAME}! I'm ${buyerName}.\n\nI've claimed ${myCards.length} card${myCards.length === 1 ? "" : "s"}:\n${myCards
     .map((c, i) => {
       const imageUrl = c.photo_url || c.tcg_image_url;
-      return `${i + 1}. ${c.name}${c.card_set ? ` (${c.card_set})` : ""} — ${CURRENCY}${Number(c.price).toFixed(0)}${imageUrl ? `\n${imageUrl}` : ''}`;
+      return `${i + 1}. ${c.name}${c.card_set ? ` (${c.card_set})` : ""} — ${CURRENCY}${Number(c.price).toFixed(0)}${c.condition ? ` (${c.condition})` : ''}${imageUrl ? `\n${imageUrl}` : ''}`;
     })
     .join("\n")}\n\nTotal: ${CURRENCY}${total.toFixed(0)}\n\n${total >= FREE_SHIPPING_THRESHOLD ? "Good news! Your order qualifies for FREE shipping!" : `Add ${CURRENCY}${FREE_SHIPPING_THRESHOLD - total} more for FREE shipping!`}\n\nPlease share payment details. 🙏`;
 
@@ -77,7 +77,9 @@ export function CheckoutSheet({ myCards, buyerName, onUnclaim }: Props) {
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold truncate">{c.name}</p>
-                  <p className="text-xs text-muted-foreground truncate">{c.card_set}</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {c.card_set} {c.condition ? `(${c.condition})` : ''}
+                  </p>
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-bold text-primary">{CURRENCY}{Number(c.price).toFixed(0)}</p>
                     {c.claimed_at && (
