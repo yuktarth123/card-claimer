@@ -73,7 +73,7 @@ const MediaCarouselDialog: React.FC<MediaCarouselDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="fixed inset-0 max-w-none w-screen h-screen flex items-center justify-center p-0 border-none bg-black/80">
+      <DialogContent className="fixed inset-0 w-screen h-screen p-0 border-none bg-black/80 flex items-center justify-center translate-x-0 translate-y-0 overflow-hidden">
         <Button
           variant="ghost"
           size="icon"
@@ -96,13 +96,13 @@ const MediaCarouselDialog: React.FC<MediaCarouselDialogProps> = ({
                       loop
                       muted
                       playsInline
-                      className="w-full h-full object-contain rounded-lg shadow-lg"
+                      className="w-full h-full max-w-full max-h-full object-contain rounded-lg shadow-lg"
                     />
                   ) : (
                     <img
                       src={url}
                       alt={`Card media ${index + 1}`}
-                      className="w-full h-full object-contain rounded-lg shadow-lg"
+                      className="w-full h-full max-w-full max-h-full object-contain rounded-lg shadow-lg"
                     />
                   )}
                 </div>
