@@ -1,10 +1,10 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CURRENCY, CLAIM_DURATION_MINUTES } from "@/config";
-import { Database } from "@/integrations/supabase/types";
+import type { Database } from "@/integrations/supabase/types";
 import { Sparkles, Check, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import ClaimCountdown from "./ClaimCountdown"; // Import the new component
+import ClaimCountdown from "./ClaimCountdown";
 import { addMinutes, isPast } from "date-fns";
 
 type Card = Database["public"]["Tables"]["cards"]["Row"];
@@ -15,7 +15,7 @@ interface Props {
   onClaim: (card: Card) => void;
   onUnclaim: (card: Card) => void;
   disabled?: boolean;
-  isSaleLive: boolean; // New prop for sale live status
+  isSaleLive: boolean;
 }
 
 export function CardTile({ card, isMine, onClaim, onUnclaim, disabled, isSaleLive }: Props) {
@@ -39,7 +39,7 @@ export function CardTile({ card, isMine, onClaim, onUnclaim, disabled, isSaleLiv
         "group relative overflow-hidden rounded-2xl gradient-card-bg border border-border shadow-card-pop animate-fade-in transition-all",
         claimed && !isMine && "opacity-60 grayscale",
         isMine && "ring-2 ring-success shadow-claim",
-        isMine && isClaimExpired && "ring-2 ring-destructive shadow-none opacity-80" // Visual for expired claim
+        isMine && isClaimExpired && "ring-2 ring-destructive shadow-none opacity-80"
       )}
     >
       <div className="aspect-[3/4] w-full overflow-hidden bg-muted relative">
@@ -66,11 +66,18 @@ export function CardTile({ card, isMine, onClaim, onUnclaim, disabled, isSaleLiv
             <Sparkles className="w-10 h-10" />
           </div>
         )}
-        {card.rarity && (
-          <Badge className="absolute top-2 right-2 gradient-gold text-primary-foreground border-0 shadow-md">
-            {card.rarity}
-          </Badge>
-        )}
+        <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
+          {card.condition && (
+            <Badge className="bg-card text-foreground border border-border shadow-md">
+              {card.condition}
+            </Badge>
+          )}
+          {card.rarity && (
+            <Badge className="gradient-gold text-primary-foreground border-0 shadow-md">
+              {card.rarity}
+            </Badge>
+          )}
+        </div>
         {claimed && !isMine && (
           <div className="absolute inset-0 flex items-center justify-center bg-background/70 backdrop-blur-sm animate-claim-pop">
             <div className="text-center px-4">
@@ -98,9 +105,6 @@ export function CardTile({ card, isMine, onClaim, onUnclaim, disabled, isSaleLiv
           {card.card_set && (
             <p className="text-xs text-muted-foreground truncate">{card.card_set}</p>
           )}
-          {card.condition && (
-            <p className="text-xs text-muted-foreground truncate">Condition: {card.condition}</p>
-          )}
         </div>
         <div className="flex items-center justify-between gap-2">
           <span className="font-black text-lg text-primary">
@@ -111,7 +115,7 @@ export function CardTile({ card, isMine, onClaim, onUnclaim, disabled, isSaleLiv
               size="sm"
               variant="outline"
               onClick={() => onUnclaim(card)}
-              disabled={disabled || isClaimExpired} // Disable unclaim if expired
+              disabled={disabled || isClaimExpired}
             >
               {isClaimExpired ? "Expired" : "Unclaim"}
             </Button>
