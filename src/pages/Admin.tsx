@@ -281,7 +281,7 @@ const Admin = () => {
                     onClick={() => photoFileRef.current?.click()}
                     className="flex-1 min-w-[140px]"
                   >
-                    <Camera className="w-4 h-4 mr-2" /> Upload Photo
+                    <Camera className="w-4 h-4 mr-2" /> Take Photo / Choose Photo
                   </Button>
                   <input
                     ref={photoFileRef}
@@ -318,12 +318,13 @@ const Admin = () => {
                     onClick={() => videoFileRef.current?.click()}
                     className="flex-1 min-w-[140px]"
                   >
-                    <Video className="w-4 h-4 mr-2" /> Upload Video
+                    <Video className="w-4 h-4 mr-2" /> Record Video / Choose Video
                   </Button>
                   <input
                     ref={videoFileRef}
                     type="file"
                     accept="video/*"
+                    capture="environment"
                     className="hidden"
                     onChange={(e) => onPickVideo(e.target.files?.[0] || null)}
                   />

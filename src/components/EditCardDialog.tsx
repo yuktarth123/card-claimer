@@ -225,7 +225,7 @@ export function EditCardDialog({ card, open, onOpenChange, onSave }: EditCardDia
                 onClick={() => photoFileRef.current?.click()}
                 className="w-full"
               >
-                <Camera className="w-4 h-4 mr-2" /> Change Photo
+                <Camera className="w-4 h-4 mr-2" /> Take Photo / Choose Photo
               </Button>
               <input
                 ref={photoFileRef}
@@ -261,12 +261,13 @@ export function EditCardDialog({ card, open, onOpenChange, onSave }: EditCardDia
                 onClick={() => videoFileRef.current?.click()}
                 className="w-full"
               >
-                <Video className="w-4 h-4 mr-2" /> Change Video
+                <Video className="w-4 h-4 mr-2" /> Record Video / Choose Video
               </Button>
               <input
                 ref={videoFileRef}
                 type="file"
                 accept="video/*"
+                capture="environment"
                 className="hidden"
                 onChange={handleVideoFileChange}
               />
