@@ -95,13 +95,13 @@ const MediaCarouselDialog: React.FC<MediaCarouselDialogProps> = ({
                       autoPlay
                       loop
                       playsInline
-                      className="max-h-full max-w-full object-contain rounded-lg shadow-lg"
+                      className="w-full h-full object-contain rounded-lg shadow-lg" // Changed max-h/w to w-full h-full
                     />
                   ) : (
                     <img
                       src={url}
                       alt={`Card media ${index + 1}`}
-                      className="max-h-full max-w-full object-contain rounded-lg shadow-lg"
+                      className="w-full h-full object-contain rounded-lg shadow-lg" // Changed max-h/w to w-full h-full
                     />
                   )}
                 </div>
