@@ -2,7 +2,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescri
 import { Button } from "@/components/ui/button";
 import { ShoppingBag, MessageCircle, X } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
-import { CURRENCY, SELLER_NAME, SELLER_WHATSAPP } from "@/config";
+import { CURRENCY, SELLER_NAME, SELLER_WHATSAPP, DISCOUNT_RULES } from "@/config";
 
 type Card = Database["public"]["Tables"]["cards"]["Row"];
 
@@ -13,11 +13,30 @@ interface Props {
 }
 
 export function CheckoutSheet({ myCards, buyerName, onUnclaim }: Props) {
-  const total = myCards.reduce((s, c) => s + Number(c.price), 0);
+  const subtotal = myCards.reduce((s, c) => s + Number(c.price), 0);
 
-  const message = `Hi ${SELLER_NAME}! I'm ${buyerName}.\n\nI've claimed ${myCards.length} card${myCards.length === 1 ? "" : "s"}:\n${myCards
+  const calculateDiscount = (cartValue: number) => {
+    for (const rule of DISCOUNT_RULES) {
+      if (cartValue >= rule.minCartValue) {
+        return rule.discount;
+      }
+    }
+    return 0;
+  };
+
+  const discount = calculateDiscount(subtotal);
+  const totalAfterDiscount = subtotal - discount;
+
+  let message = `Hi ${SELLER_NAME}! I'm ${buyerName}.\n\nI've claimed ${myCards.length} card${myCards.length === 1 ? "" : "s"}:\n${myCards
     .map((c, i) => `${i + 1}. ${c.name}${c.card_set ? ` (${c.card_set})` : ""} — ${CURRENCY}${Number(c.price).toFixed(0)}`)
-    .join("\n")}\n\nTotal: ${CURRENCY}${total.toFixed(0)}\n\nPlease share payment details. 🙏`;
+    .join("\n")}`;
+
+  if (discount > 0) {
+    message += `\n\nSubtotal: ${CURRENCY}${subtotal.toFixed(0)}\nDiscount: -${CURRENCY}${discount.toFixed(0)}\nTotal: ${CURRENCY}${totalAfterDiscount.toFixed(0)}`;
+  } else {
+    message += `\n\nTotal: ${CURRENCY}${subtotal.toFixed(0)}`;
+  }
+  message += `\n\nPlease share payment details. 🙏`;
 
   const waLink = `https://wa.me/${SELLER_WHATSAPP}?text=${encodeURIComponent(message)}`;
 
@@ -29,7 +48,7 @@ export function CheckoutSheet({ myCards, buyerName, onUnclaim }: Props) {
           className="fixed bottom-4 right-4 z-40 gradient-gold text-primary-foreground font-bold shadow-glow rounded-full h-14 px-5"
         >
           <ShoppingBag className="w-5 h-5 mr-2" />
-          {myCards.length > 0 ? `${myCards.length} • ${CURRENCY}${total.toFixed(0)}` : "Cart"}
+          {myCards.length > 0 ? `${myCards.length} • ${CURRENCY}${totalAfterDiscount.toFixed(0)}` : "Cart"}
         </Button>
       </SheetTrigger>
       <SheetContent side="right" className="w-full sm:max-w-md flex flex-col">
@@ -66,9 +85,21 @@ export function CheckoutSheet({ myCards, buyerName, onUnclaim }: Props) {
         </div>
 
         <SheetFooter className="border-t border-border pt-4 flex-col gap-3 sm:flex-col">
+          {discount > 0 && (
+            <>
+              <div className="flex justify-between items-center w-full text-sm text-muted-foreground">
+                <span>Subtotal</span>
+                <span>{CURRENCY}{subtotal.toFixed(0)}</span>
+              </div>
+              <div className="flex justify-between items-center w-full text-sm text-success">
+                <span>Discount</span>
+                <span>-{CURRENCY}{discount.toFixed(0)}</span>
+              </div>
+            </>
+          )}
           <div className="flex justify-between items-center w-full">
             <span className="text-muted-foreground">Total</span>
-            <span className="text-2xl font-black text-primary">{CURRENCY}{total.toFixed(0)}</span>
+            <span className="text-2xl font-black text-primary">{CURRENCY}{totalAfterDiscount.toFixed(0)}</span>
           </div>
           <Button
             asChild

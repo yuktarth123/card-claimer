@@ -3,3 +3,9 @@
 export const SELLER_WHATSAPP = "910000000000";
 export const SELLER_NAME = "Yuktarth";
 export const CURRENCY = "₹";
+
+// Hot Sale Discount Rules (ordered from highest cart value to lowest)
+export const DISCOUNT_RULES = [
+  { minCartValue: 10000, discount: 1000 },
+  { minCartValue: 5000, discount: 500 },
+];
