@@ -1,7 +1,7 @@
 {
-  "name": "Pokémon TCG Live Sale",
-  "short_name": "TCG Sale",
-  "description": "Claim Pokémon singles in real-time",
+  "name": "Yanks TCG Card Shop",
+  "short_name": "TCG Shop",
+  "description": "Yanks TCG Live Pokémon TCG card shop. Claim singles in real-time, first-come first-served.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0e0e1a",
