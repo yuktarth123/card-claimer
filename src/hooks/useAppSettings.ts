@@ -11,6 +11,7 @@ export function useAppSettings() {
 
   useEffect(() => {
     let mounted = true;
+    let channel: any = null; // Initialize channel variable
 
     const fetchSettings = async () => {
       const { data, error } = await supabase.from("settings").select("*").eq("id", 1).single();
@@ -27,24 +28,37 @@ export function useAppSettings() {
 
     fetchSettings();
 
-    const channel = supabase
-      .channel("app-settings-changes")
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "settings", filter: "id=eq.1" },
-        (payload) => {
-          if (mounted) {
-            setSettings({ isHotSaleActive: (payload.new as { is_hot_sale_active: boolean }).is_hot_sale_active });
+    const setupRealtimeChannel = async () => {
+      // First, remove any existing channel with this name to ensure a clean slate
+      const existingChannel = supabase.getChannels().find(c => c.topic === "realtime:app-settings-changes");
+      if (existingChannel) {
+        await supabase.removeChannel(existingChannel);
+      }
+
+      channel = supabase
+        .channel("app-settings-changes")
+        .on(
+          "postgres_changes",
+          { event: "UPDATE", schema: "public", table: "settings", filter: "id=eq.1" },
+          (payload) => {
+            if (mounted) {
+              setSettings({ isHotSaleActive: (payload.new as { is_hot_sale_active: boolean }).is_hot_sale_active });
+            }
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
+    };
+
+    setupRealtimeChannel();
 
     return () => {
       mounted = false;
-      supabase.removeChannel(channel);
+      // On cleanup, remove the specific channel created in this effect
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
     };
-  }, []);
+  }, []); // Empty dependency array means this effect runs once on mount and cleans up on unmount
 
   const updateHotSaleStatus = async (isActive: boolean) => {
     setLoading(true);
