@@ -7,8 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Camera, Upload, Search, Trash2, Plus, X, Loader2, Sparkles } from "lucide-react";
+import { Camera, Upload, Search, Trash2, Plus, X, Loader2, Sparkles, Tag } from "lucide-react";
 import { CURRENCY } from "@/config";
+import { Switch } from "@/components/ui/switch";
+import { useAppSettings } from "@/hooks/useAppSettings";
 
 type DbCard = Database["public"]["Tables"]["cards"]["Row"];
 
@@ -24,6 +26,8 @@ const Admin = () => {
   const [selectedTcg, setSelectedTcg] = useState<TCGCard | null>(null);
   const [publishing, setPublishing] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const { isSaleActive, toggleSale, isUpdatingSale } = useAppSettings();
 
   useEffect(() => {
     supabase
@@ -58,7 +62,7 @@ const Admin = () => {
   };
 
   const runSearch = async () => {
-    if (!search.trim()) return;
+    if (!search.trim()) return [];
     setSearching(true);
     const r = await searchPokemonCards(search);
     setResults(r);
@@ -255,8 +259,33 @@ const Admin = () => {
           </CardContent>
         </Card>
 
-        {/* Listed cards */}
+        {/* Admin Settings */}
         <Card className="gradient-card-bg border-border">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Tag className="w-5 h-5 text-primary" /> Sale Settings
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="hot-sale-toggle" className="text-base">
+                Hot Sale Active
+                <p className="text-sm text-muted-foreground font-normal">
+                  {isSaleActive ? "Discounts are currently enabled." : "Discounts are currently disabled."}
+                </p>
+              </Label>
+              <Switch
+                id="hot-sale-toggle"
+                checked={isSaleActive}
+                onCheckedChange={toggleSale}
+                disabled={isUpdatingSale}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Listed cards */}
+        <Card className="gradient-card-bg border-border lg:col-span-2">
           <CardHeader>
             <CardTitle>Live Listings ({cards.length})</CardTitle>
           </CardHeader>
