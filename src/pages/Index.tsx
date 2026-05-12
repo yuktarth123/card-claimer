@@ -147,12 +147,19 @@ const Index = () => {
       return;
     }
     if (!name) return;
+    // Haptic feedback on mobile
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+      navigator.vibrate?.(20);
+    }
     const { error } = await supabase.rpc("claim_card", {
       _card_id: card.id,
       _buyer_name: name,
       _session_id: sessionId,
     });
     if (error) {
+      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+        navigator.vibrate?.([40, 30, 40]);
+      }
       toast.error("Too late! Someone beat you to it.");
     } else {
       toast.success(`Claimed ${card.name}!`, { description: "Open your cart to checkout." });
@@ -160,6 +167,9 @@ const Index = () => {
   };
 
   const handleUnclaim = async (card: Card) => {
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+      navigator.vibrate?.(10);
+    }
     const { error } = await supabase.rpc("unclaim_card", {
       _card_id: card.id,
       _session_id: sessionId,
@@ -171,7 +181,7 @@ const Index = () => {
   const availableCount = cards.filter((c) => c.status === "available").length;
 
   return (
-    <div className="min-h-screen pb-32">
+    <div className="min-h-screen pb-28">
       <NameGate open={!name && isSaleLive} onSubmit={setName} />
 
       {/* Hero */}
