@@ -52,7 +52,8 @@ export function CheckoutSheet({ myCards, buyerName, onUnclaim }: Props) {
     <Sheet>
       <SheetTrigger asChild>
         <button
-          className="fixed bottom-0 inset-x-0 z-40 border-t border-border bg-card/95 backdrop-blur-md shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.6)] pb-[env(safe-area-inset-bottom)] active:scale-[0.99] transition-transform"
+          disabled={myCards.length === 0}
+          className="fixed bottom-0 inset-x-0 z-40 border-t border-border bg-card/95 backdrop-blur-md shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.6)] pb-[env(safe-area-inset-bottom)] active:scale-[0.99] transition-transform disabled:cursor-not-allowed"
           aria-label="Open cart"
         >
           <div className="container flex items-center gap-3 py-3">
@@ -83,7 +84,13 @@ export function CheckoutSheet({ myCards, buyerName, onUnclaim }: Props) {
                 </>
               )}
             </div>
-            <div className="px-4 h-11 rounded-xl bg-success text-success-foreground font-bold flex items-center gap-1.5 text-sm shadow-claim">
+            <div
+              className={
+                myCards.length === 0
+                  ? "px-4 h-11 rounded-xl bg-muted text-muted-foreground font-bold flex items-center gap-1.5 text-sm opacity-60"
+                  : "px-4 h-11 rounded-xl bg-success text-success-foreground font-bold flex items-center gap-1.5 text-sm shadow-claim"
+              }
+            >
               <MessageCircle className="w-4 h-4" />
               Checkout
             </div>
