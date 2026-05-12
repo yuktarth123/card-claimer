@@ -6,16 +6,14 @@ import { NameGate } from "@/components/NameGate";
 import { CheckoutSheet } from "@/components/CheckoutSheet";
 import { useBuyer } from "@/hooks/useBuyer";
 import { toast } from "sonner";
-import { Sparkles, Zap, Tag } from "lucide-react";
+import { Sparkles, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useAppSettings } from "@/hooks/useAppSettings";
 
 type Card = Database["public"]["Tables"]["cards"]["Row"];
 
 type Filter = "all" | "available" | "mine";
 
 const Index = () => {
-  const { settings } = useAppSettings();
   const { name, sessionId, setName } = useBuyer();
   const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,11 +109,6 @@ const Index = () => {
             <span className="font-bold tracking-wide text-sm uppercase text-muted-foreground">
               Live TCG Drop
             </span>
-            {settings.isHotSaleActive && (
-              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent/15 border border-accent/30 text-accent text-xs font-semibold">
-                <Tag className="w-3 h-3" /> Hot Sale!
-              </div>
-            )}
           </div>
           <h1 className="text-3xl md:text-5xl font-black text-balance">
             Pokémon Cards <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Live Sale</span>
