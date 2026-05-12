@@ -6,10 +6,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { CalendarIcon, Clock, Loader2 } from "lucide-react";
+import { CalendarIcon, Clock, Loader2, Play } from "lucide-react"; // Added Play icon
 import { cn } from "@/lib/utils";
 import { format, parseISO, setHours, setMinutes, setSeconds } from "date-fns";
-import { toZonedTime, fromZonedTime } from 'date-fns-tz'; // Changed to fromZonedTime
+import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 
 const IST_TIMEZONE = 'Asia/Kolkata'; // Indian Standard Time
 
@@ -79,7 +79,7 @@ export function SaleTimeManager() {
 
     setIsSaving(true);
     // Convert IST date to UTC for Supabase storage
-    const utcTimestamp = fromZonedTime(saleStartTime, IST_TIMEZONE).toISOString(); // Changed to fromZonedTime
+    const utcTimestamp = fromZonedTime(saleStartTime, IST_TIMEZONE).toISOString();
 
     const { error } = await supabase
       .from("app_settings")
@@ -90,6 +90,28 @@ export function SaleTimeManager() {
       toast.error("Failed to save sale start time.");
     } else {
       toast.success("Sale start time updated!");
+    }
+    setIsSaving(false);
+  };
+
+  const startSaleNow = async () => {
+    if (!confirm("Are you sure you want to start the sale RIGHT NOW? This will make all available cards claimable immediately.")) return;
+
+    setIsSaving(true);
+    const now = new Date();
+    // Convert current time to UTC for Supabase storage
+    const utcTimestamp = now.toISOString();
+
+    const { error } = await supabase
+      .from("app_settings")
+      .upsert({ id: 1, sale_start_time: utcTimestamp }, { onConflict: "id" });
+
+    if (error) {
+      console.error("Error starting sale now:", error);
+      toast.error("Failed to start sale immediately.");
+    } else {
+      toast.success("Sale started immediately!");
+      fetchSaleStartTime(); // Re-fetch to update UI with new time
     }
     setIsSaving(false);
   };
@@ -138,6 +160,10 @@ export function SaleTimeManager() {
           <Button onClick={saveSaleStartTime} disabled={isSaving || !saleStartTime} className="w-full sm:w-auto">
             {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
             Save
+          </Button>
+          <Button onClick={startSaleNow} disabled={isSaving} variant="secondary" className="w-full sm:w-auto bg-success hover:bg-success/90 text-success-foreground">
+            {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Play className="w-4 h-4 mr-2" />}
+            Start Sale Now
           </Button>
         </div>
       )}
