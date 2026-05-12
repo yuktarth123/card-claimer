@@ -18,7 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import WhatsAppBanner from "@/components/WhatsAppBanner"; // Import the new banner component
+import WhatsAppBanner from "@/components/WhatsAppBanner";
+import PwaInstallBanner from "@/components/PwaInstallBanner"; // Import the new PWA banner
 
 type Card = Database["public"]["Tables"]["cards"]["Row"];
 type Filter = "all" | "available" | "mine";
@@ -183,6 +184,7 @@ const Index = () => {
   return (
     <div className="min-h-screen pb-28">
       <NameGate open={!name && isSaleLive} onSubmit={setName} />
+      <PwaInstallBanner /> {/* Integrated the PWA Install Banner here */}
 
       {/* Hero */}
       <header className="relative overflow-hidden border-b border-border">
@@ -234,7 +236,7 @@ const Index = () => {
       </header>
 
       <main className="container py-6">
-        <WhatsAppBanner className="mb-6" /> {/* The new WhatsApp banner */}
+        <WhatsAppBanner className="mb-6" />
 
         {/* Filter pills and Sort dropdown */}
         <div className="flex flex-wrap items-center gap-2 mb-5 overflow-x-auto pb-1">
