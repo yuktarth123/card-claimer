@@ -114,6 +114,32 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      finalize_claims: {
+        Args: { _session_id: string }
+        Returns: {
+          buyer_session_id: string | null
+          card_number: string | null
+          card_set: string | null
+          claimed_at: string | null
+          claimed_by: string | null
+          condition: string | null
+          created_at: string
+          id: string
+          name: string
+          photo_url: string | null
+          price: number
+          rarity: string | null
+          status: string
+          tcg_image_url: string | null
+          video_url: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "cards"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       unclaim_card: {
         Args: { _card_id: string; _session_id: string }
         Returns: {
