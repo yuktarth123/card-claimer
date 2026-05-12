@@ -113,14 +113,18 @@ export function CardTile({ card, isMine, onClaim, onUnclaim, disabled, isSaleLiv
             </div>
           )}
           {isMine && (
-            <div className="absolute top-2 left-2 flex flex-col items-start gap-1"> {/* Changed to flex-col items-start */}
-              <div className="bg-success text-success-foreground px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1 animate-claim-pop shadow-claim">
-                <Check className="w-3 h-3" /> Yours
+            <>
+              <div className="absolute top-2 left-2">
+                <div className="bg-success text-success-foreground px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1 animate-claim-pop shadow-claim">
+                  <Check className="w-3 h-3" /> Yours
+                </div>
               </div>
               {card.claimed_at && (
-                <ClaimCountdown claimedAt={card.claimed_at} onExpired={handleUnclaimOnExpire} className="text-[10px] px-1.5 py-0.5" />
+                <div className="absolute bottom-2 left-2">
+                  <ClaimCountdown claimedAt={card.claimed_at} onExpired={handleUnclaimOnExpire} className="text-[10px] px-1.5 py-0.5" />
+                </div>
               )}
-            </div>
+            </>
           )}
         </div>
 
