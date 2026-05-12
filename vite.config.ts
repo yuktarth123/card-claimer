@@ -17,15 +17,6 @@ export default defineConfig(({ mode }) => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
-    dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime"],
-  },
-  optimizeDeps: {
-    // Exclude date-fns-tz from pre-bundling to resolve import issues
-    exclude: ["date-fns-tz"],
-  },
-  build: {
-    rollupOptions: {
-      // Removed @tanstack/query-core from external
-    },
+    dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime", "@tanstack/react-query", "@tanstack/query-core"],
   },
 }));

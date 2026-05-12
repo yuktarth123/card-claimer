@@ -14,21 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      app_settings: {
-        Row: {
-          id: number
-          sale_start_time: string | null
-        }
-        Insert: {
-          id?: number
-          sale_start_time?: string | null
-        }
-        Update: {
-          id?: number
-          sale_start_time?: string | null
-        }
-        Relationships: []
-      }
       cards: {
         Row: {
           buyer_session_id: string | null
@@ -36,7 +21,6 @@ export type Database = {
           card_set: string | null
           claimed_at: string | null
           claimed_by: string | null
-          condition: string | null
           created_at: string
           id: string
           name: string
@@ -45,7 +29,6 @@ export type Database = {
           rarity: string | null
           status: string
           tcg_image_url: string | null
-          video_url: string | null
         }
         Insert: {
           buyer_session_id?: string | null
@@ -53,7 +36,6 @@ export type Database = {
           card_set?: string | null
           claimed_at?: string | null
           claimed_by?: string | null
-          condition?: string | null
           created_at?: string
           id?: string
           name: string
@@ -62,7 +44,6 @@ export type Database = {
           rarity?: string | null
           status?: string
           tcg_image_url?: string | null
-          video_url?: string | null
         }
         Update: {
           buyer_session_id?: string | null
@@ -70,7 +51,6 @@ export type Database = {
           card_set?: string | null
           claimed_at?: string | null
           claimed_by?: string | null
-          condition?: string | null
           created_at?: string
           id?: string
           name?: string
@@ -79,7 +59,6 @@ export type Database = {
           rarity?: string | null
           status?: string
           tcg_image_url?: string | null
-          video_url?: string | null
         }
         Relationships: []
       }
@@ -96,7 +75,6 @@ export type Database = {
           card_set: string | null
           claimed_at: string | null
           claimed_by: string | null
-          condition: string | null
           created_at: string
           id: string
           name: string
@@ -105,39 +83,12 @@ export type Database = {
           rarity: string | null
           status: string
           tcg_image_url: string | null
-          video_url: string | null
         }
         SetofOptions: {
           from: "*"
           to: "cards"
           isOneToOne: true
           isSetofReturn: false
-        }
-      }
-      finalize_claims: {
-        Args: { _session_id: string }
-        Returns: {
-          buyer_session_id: string | null
-          card_number: string | null
-          card_set: string | null
-          claimed_at: string | null
-          claimed_by: string | null
-          condition: string | null
-          created_at: string
-          id: string
-          name: string
-          photo_url: string | null
-          price: number
-          rarity: string | null
-          status: string
-          tcg_image_url: string | null
-          video_url: string | null
-        }[]
-        SetofOptions: {
-          from: "*"
-          to: "cards"
-          isOneToOne: false
-          isSetofReturn: true
         }
       }
       unclaim_card: {
@@ -148,7 +99,6 @@ export type Database = {
           card_set: string | null
           claimed_at: string | null
           claimed_by: string | null
-          condition: string | null
           created_at: string
           id: string
           name: string
@@ -157,7 +107,6 @@ export type Database = {
           rarity: string | null
           status: string
           tcg_image_url: string | null
-          video_url: string | null
         }
         SetofOptions: {
           from: "*"

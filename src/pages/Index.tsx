@@ -6,74 +6,32 @@ import { NameGate } from "@/components/NameGate";
 import { CheckoutSheet } from "@/components/CheckoutSheet";
 import { useBuyer } from "@/hooks/useBuyer";
 import { toast } from "sonner";
-import { Zap } from "lucide-react";
+import { Sparkles, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import CountdownTimer from "@/components/CountdownTimer";
-import { CURRENCY, SELLER_NAME } from "@/config";
-import AppLogo from "@/components/AppLogo";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import WhatsAppBanner from "@/components/WhatsAppBanner";
-import PwaInstallBanner from "@/components/PwaInstallBanner"; // Import the new PWA banner
 
 type Card = Database["public"]["Tables"]["cards"]["Row"];
+
 type Filter = "all" | "available" | "mine";
-type SortOrder = "none" | "price-asc" | "price-desc";
 
 const Index = () => {
   const { name, sessionId, setName } = useBuyer();
   const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("all");
-  const [sortOrder, setSortOrder] = useState<SortOrder>("none");
-  const [isSaleLive, setIsSaleLive] = useState(false);
-  const [saleStartTime, setSaleStartTime] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
+    supabase
+      .from("cards")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .then(({ data }) => {
+        if (mounted && data) setCards(data);
+        setLoading(false);
+      });
 
-    const fetchInitialData = async () => {
-      // Fetch cards
-      const { data: cardsData, error: cardsError } = await supabase
-        .from("cards")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (mounted && cardsData) setCards(cardsData);
-      if (cardsError) console.error("Error fetching cards:", cardsError);
-
-      // Fetch sale start time
-      const { data: settingsData, error: settingsError } = await supabase
-        .from("app_settings")
-        .select("sale_start_time")
-        .eq("id", 1)
-        .single();
-
-      if (mounted) {
-        if (settingsError && settingsError.code !== 'PGRST116') {
-          console.error("Error fetching app settings:", settingsError);
-          toast.error("Failed to load sale settings.");
-        } else if (settingsData?.sale_start_time) {
-          setSaleStartTime(settingsData.sale_start_time);
-          setIsSaleLive(new Date() >= new Date(settingsData.sale_start_time));
-        } else {
-          // If no sale_start_time is set, sale is not live
-          setSaleStartTime(null);
-          setIsSaleLive(false);
-        }
-      }
-      setLoading(false);
-    };
-
-    fetchInitialData();
-
-    const cardsChannel = supabase
-      .channel("index-cards-changes")
+    const channel = supabase
+      .channel("cards-live")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "cards" },
@@ -94,23 +52,9 @@ const Index = () => {
       )
       .subscribe();
 
-    const settingsChannel = supabase
-      .channel("index-settings-changes")
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "app_settings", filter: "id=eq.1" },
-        (payload) => {
-          const newSaleStartTime = (payload.new as Database["public"]["Tables"]["app_settings"]["Row"]).sale_start_time;
-          setSaleStartTime(newSaleStartTime);
-          setIsSaleLive(newSaleStartTime ? new Date() >= new Date(newSaleStartTime) : false);
-        }
-      )
-      .subscribe();
-
     return () => {
       mounted = false;
-      supabase.removeChannel(cardsChannel);
-      supabase.removeChannel(settingsChannel);
+      supabase.removeChannel(channel);
     };
   }, []);
 
@@ -120,47 +64,19 @@ const Index = () => {
   );
 
   const visible = useMemo(() => {
-    let filteredCards = cards;
-
-    if (filter === "available") {
-      filteredCards = cards.filter((c) => c.status === "available");
-    } else if (filter === "mine") {
-      filteredCards = myCards;
-    }
-
-    // Apply sorting
-    if (sortOrder === "price-asc") {
-      filteredCards = [...filteredCards].sort((a, b) => Number(a.price) - Number(b.price));
-    } else if (sortOrder === "price-desc") {
-      filteredCards = [...filteredCards].sort((a, b) => Number(b.price) - Number(a.price));
-    }
-
-    return filteredCards;
-  }, [cards, filter, myCards, sortOrder]);
-
-  const totalListedValue = useMemo(() => {
-    return cards.reduce((sum, card) => sum + Number(card.price), 0);
-  }, [cards]);
+    if (filter === "available") return cards.filter((c) => c.status === "available");
+    if (filter === "mine") return myCards;
+    return cards;
+  }, [cards, filter, myCards]);
 
   const handleClaim = async (card: Card) => {
-    if (!isSaleLive) {
-      toast.info("The sale hasn't started yet! Stay tuned.");
-      return;
-    }
     if (!name) return;
-    // Haptic feedback on mobile
-    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-      navigator.vibrate?.(20);
-    }
     const { error } = await supabase.rpc("claim_card", {
       _card_id: card.id,
       _buyer_name: name,
       _session_id: sessionId,
     });
     if (error) {
-      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-        navigator.vibrate?.([40, 30, 40]);
-      }
       toast.error("Too late! Someone beat you to it.");
     } else {
       toast.success(`Claimed ${card.name}!`, { description: "Open your cart to checkout." });
@@ -168,9 +84,6 @@ const Index = () => {
   };
 
   const handleUnclaim = async (card: Card) => {
-    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-      navigator.vibrate?.(10);
-    }
     const { error } = await supabase.rpc("unclaim_card", {
       _card_id: card.id,
       _session_id: sessionId,
@@ -182,9 +95,8 @@ const Index = () => {
   const availableCount = cards.filter((c) => c.status === "available").length;
 
   return (
-    <div className="min-h-screen pb-28">
-      <NameGate open={!name && isSaleLive} onSubmit={setName} />
-      <PwaInstallBanner /> {/* Integrated the PWA Install Banner here */}
+    <div className="min-h-screen pb-32">
+      <NameGate open={!name} onSubmit={setName} />
 
       {/* Hero */}
       <header className="relative overflow-hidden border-b border-border">
@@ -192,38 +104,23 @@ const Index = () => {
         <div className="relative container py-8 md:py-12">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-10 h-10 rounded-xl gradient-gold flex items-center justify-center shadow-glow">
-              <AppLogo className="w-full h-full" alt="Yanks TCG Logo" />
+              <Sparkles className="w-5 h-5 text-primary-foreground" />
             </div>
             <span className="font-bold tracking-wide text-sm uppercase text-muted-foreground">
-              {SELLER_NAME}
+              Live TCG Drop
             </span>
           </div>
           <h1 className="text-3xl md:text-5xl font-black text-balance">
             Pokémon Cards <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Live Sale</span>
           </h1>
           <p className="text-muted-foreground mt-2 max-w-xl">
-            {isSaleLive
-              ? "First trainer to claim wins the card. Tap to lock it in — everyone sees it instantly."
-              : "Get ready! Preview cards now, the live sale starts soon. First-come, first-served when it goes live!"}
+            First trainer to claim wins the card. Tap to lock it in — everyone sees it instantly.
           </p>
           <div className="flex flex-wrap items-center gap-2 mt-5">
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/15 border border-success/30">
               <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
               <span className="text-sm font-semibold text-success">{availableCount} available</span>
             </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/15 border border-primary/30">
-              <span className="text-sm font-semibold text-primary">Total Listed: {CURRENCY}{totalListedValue.toFixed(0)}</span>
-            </div>
-            {!isSaleLive && saleStartTime && (
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/15 border border-primary/30">
-                <CountdownTimer targetDate={saleStartTime} onCountdownEnd={() => setIsSaleLive(true)} className="text-primary" />
-              </div>
-            )}
-            {!isSaleLive && !saleStartTime && (
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/15 border border-primary/30">
-                <span className="text-sm font-semibold text-primary">Sale time not set yet!</span>
-              </div>
-            )}
             {name && (
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted border border-border">
                 <Zap className="w-3.5 h-3.5 text-primary" />
@@ -236,10 +133,8 @@ const Index = () => {
       </header>
 
       <main className="container py-6">
-        <WhatsAppBanner className="mb-6" />
-
-        {/* Filter pills and Sort dropdown */}
-        <div className="flex flex-wrap items-center gap-2 mb-5 overflow-x-auto pb-1">
+        {/* Filter pills */}
+        <div className="flex gap-2 mb-5 overflow-x-auto pb-1">
           {([
             { k: "all", label: `All (${cards.length})` },
             { k: "available", label: `Available (${availableCount})` },
@@ -255,18 +150,6 @@ const Index = () => {
               {f.label}
             </Button>
           ))}
-          <div className="ml-auto">
-            <Select value={sortOrder} onValueChange={(value: SortOrder) => setSortOrder(value)}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Sort by Price" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Default (Newest)</SelectItem>
-                <SelectItem value="price-asc">Price: Low to High</SelectItem>
-                <SelectItem value="price-desc">Price: High to Low</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
         </div>
 
         {loading ? (
@@ -277,7 +160,7 @@ const Index = () => {
           </div>
         ) : visible.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">
-            <AppLogo className="w-12 h-12 mx-auto mb-3 opacity-40" alt="Yanks TCG Logo" />
+            <Sparkles className="w-12 h-12 mx-auto mb-3 opacity-40" />
             <p className="text-lg">No cards here yet. Check back soon!</p>
           </div>
         ) : (
@@ -289,8 +172,7 @@ const Index = () => {
                 isMine={c.buyer_session_id === sessionId && c.status === "claimed"}
                 onClaim={handleClaim}
                 onUnclaim={handleUnclaim}
-                disabled={!name && isSaleLive}
-                isSaleLive={isSaleLive}
+                disabled={!name}
               />
             ))}
           </div>
