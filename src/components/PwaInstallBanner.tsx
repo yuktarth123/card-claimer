@@ -18,10 +18,8 @@ const PwaInstallBanner: React.FC<PwaInstallBannerProps> = ({ className }) => {
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      // Only show the banner if the app is not already installed
-      if (!window.matchMedia('(display-mode: standalone)').matches && !localStorage.getItem('pwa_banner_dismissed')) {
-        setShowBanner(true);
-      }
+      // Always show the banner if the prompt is available
+      setShowBanner(true);
     };
 
     const handleAppInstalled = () => {
@@ -30,21 +28,10 @@ const PwaInstallBanner: React.FC<PwaInstallBannerProps> = ({ className }) => {
       toast.success("App installed successfully!", {
         description: "You can now launch the app from your home screen.",
       });
-      localStorage.setItem('pwa_banner_dismissed', 'true'); // Mark as dismissed permanently
-    };
-
-    const handleDismiss = () => {
-      setShowBanner(false);
-      localStorage.setItem('pwa_banner_dismissed', 'true'); // Remember dismissal
     };
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
     window.addEventListener("appinstalled", handleAppInstalled);
-
-    // Check if already dismissed or installed on initial load
-    if (window.matchMedia('(display-mode: standalone)').matches || localStorage.getItem('pwa_banner_dismissed')) {
-      setShowBanner(false);
-    }
 
     return () => {
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
@@ -66,7 +53,6 @@ const PwaInstallBanner: React.FC<PwaInstallBannerProps> = ({ className }) => {
       }
       setDeferredPrompt(null);
       setShowBanner(false);
-      localStorage.setItem('pwa_banner_dismissed', 'true'); // Mark as dismissed
     }
   };
 
@@ -92,7 +78,7 @@ const PwaInstallBanner: React.FC<PwaInstallBannerProps> = ({ className }) => {
           Install
         </Button>
         <Button
-          onClick={() => setShowBanner(false)}
+          onClick={() => setShowBanner(false)} // Dismiss for current session
           variant="ghost"
           size="icon"
           className="text-muted-foreground hover:text-foreground"

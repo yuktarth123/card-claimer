@@ -6,8 +6,8 @@ import { Sparkles, Check, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ClaimCountdown from "./ClaimCountdown";
 import { addMinutes, isPast } from "date-fns";
-import React, { useState, useMemo } from "react"; // Import useState and useMemo
-import MediaCarouselDialog from "./MediaCarouselDialog"; // Import the new component
+import React, { useState, useMemo } from "react";
+import MediaCarouselDialog from "./MediaCarouselDialog";
 
 type Card = Database["public"]["Tables"]["cards"]["Row"];
 
@@ -40,8 +40,8 @@ export function CardTile({ card, isMine, onClaim, onUnclaim, disabled, isSaleLiv
     const urls: string[] = [];
     if (card.video_url) urls.push(card.video_url);
     if (card.photo_url) urls.push(card.photo_url);
-    if (card.tcg_image_url && !urls.includes(card.tcg_image_url)) urls.push(card.tcg_image_url); // Avoid duplicates if photo_url is same as tcg_image_url
-    return urls.filter(Boolean); // Filter out any null/undefined values
+    if (card.tcg_image_url && !urls.includes(card.tcg_image_url)) urls.push(card.tcg_image_url);
+    return urls.filter(Boolean);
   }, [card.video_url, card.photo_url, card.tcg_image_url]);
 
   const handleMediaClick = (clickedUrl: string) => {
@@ -113,12 +113,12 @@ export function CardTile({ card, isMine, onClaim, onUnclaim, disabled, isSaleLiv
             </div>
           )}
           {isMine && (
-            <div className="absolute top-2 left-2 flex items-center gap-1">
+            <div className="absolute top-2 left-2 flex flex-col items-start gap-1"> {/* Changed to flex-col items-start */}
               <div className="bg-success text-success-foreground px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1 animate-claim-pop shadow-claim">
                 <Check className="w-3 h-3" /> Yours
               </div>
               {card.claimed_at && (
-                <ClaimCountdown claimedAt={card.claimed_at} onExpired={handleUnclaimOnExpire} />
+                <ClaimCountdown claimedAt={card.claimed_at} onExpired={handleUnclaimOnExpire} className="text-[10px] px-1.5 py-0.5" />
               )}
             </div>
           )}
