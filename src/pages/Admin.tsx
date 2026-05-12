@@ -7,8 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Camera, Upload, Search, Trash2, Plus, X, Loader2, Sparkles } from "lucide-react";
-import { CURRENCY } from "@/config";
+import { Camera, Upload, Search, Trash2, Plus, X, Loader2, Lock, Clock, Edit, Video, Wrench } from "lucide-react"; // Added Wrench icon
+import { CURRENCY, USD_TO_INR_RATE, SELLER_NAME } from "@/config";
+import { SaleTimeManager } from "@/components/SaleTimeManager";
+import AppLogo from "@/components/AppLogo";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { EditCardDialog } from "@/components/EditCardDialog";
 
 type DbCard = Database["public"]["Tables"]["cards"]["Row"];
 
@@ -16,32 +20,47 @@ const Admin = () => {
   const [cards, setCards] = useState<DbCard[]>([]);
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
+  const [condition, setCondition] = useState<string>("Near Mint");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<TCGCard[]>([]);
   const [selectedTcg, setSelectedTcg] = useState<TCGCard | null>(null);
   const [publishing, setPublishing] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [isUpdatingConditions, setIsUpdatingConditions] = useState(false); // New state for condition update loading
+  const photoFileRef = useRef<HTMLInputElement>(null);
+  const videoFileRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    supabase
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingCard, setEditingCard] = useState<DbCard | null>(null);
+
+  const fetchCards = async () => {
+    const { data: cardsData, error: cardsError } = await supabase
       .from("cards")
       .select("*")
-      .order("created_at", { ascending: false })
-      .then(({ data }) => data && setCards(data));
+      .order("created_at", { ascending: false });
+
+    if (cardsError) {
+      console.error("Error fetching cards:", cardsError);
+      toast.error("Failed to load cards.");
+    } else if (cardsData) {
+      setCards(cardsData);
+    }
+  };
+
+  useEffect(() => {
+    fetchCards();
 
     const channel = supabase
-      .channel("admin-cards")
+      .channel("admin-changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "cards" }, () => {
-        supabase
-          .from("cards")
-          .select("*")
-          .order("created_at", { ascending: false })
-          .then(({ data }) => data && setCards(data));
+        fetchCards(); // Re-fetch cards on any change
       })
       .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
     };
@@ -57,6 +76,16 @@ const Admin = () => {
     }
   };
 
+  const onPickVideo = (file: File | null) => {
+    setVideoFile(file);
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setVideoPreview(url);
+    } else {
+      setVideoPreview(null);
+    }
+  };
+
   const runSearch = async () => {
     if (!search.trim()) return;
     setSearching(true);
@@ -69,17 +98,36 @@ const Admin = () => {
     setSelectedTcg(c);
     setName(c.name);
     setResults([]);
+
+    let usdPrice: number | undefined;
+    if (c.tcgplayer?.prices?.averageSellPrice) {
+      usdPrice = c.tcgplayer.prices.averageSellPrice;
+    } else if (c.cardmarket?.prices?.averageSellPrice) {
+      usdPrice = c.cardmarket.prices.averageSellPrice;
+    }
+
+    if (usdPrice) {
+      const inrPrice = usdPrice * USD_TO_INR_RATE;
+      setPrice(inrPrice.toFixed(0));
+      toast.success(`Price auto-filled: ${CURRENCY}${inrPrice.toFixed(0)}`);
+    } else {
+      toast.info("No price found for this card from TCG API.");
+    }
   };
 
-  const reset = () => {
+  const resetForm = () => {
     setName("");
     setPrice("");
+    setCondition("Near Mint");
     setPhotoFile(null);
     setPhotoPreview(null);
+    setVideoFile(null);
+    setVideoPreview(null);
     setSearch("");
     setResults([]);
     setSelectedTcg(null);
-    if (fileRef.current) fileRef.current.value = "";
+    if (photoFileRef.current) photoFileRef.current.value = "";
+    if (videoFileRef.current) videoFileRef.current.value = "";
   };
 
   const publish = async () => {
@@ -89,9 +137,10 @@ const Admin = () => {
     }
     setPublishing(true);
     let photo_url: string | null = null;
+    let video_url: string | null = null;
 
     if (photoFile) {
-      const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${photoFile.name.split(".").pop() || "jpg"}`;
+      const path = `card-images/${Date.now()}-${Math.random().toString(36).slice(2)}.${photoFile.name.split(".").pop() || "jpg"}`;
       const { error: upErr } = await supabase.storage.from("card-images").upload(path, photoFile, {
         cacheControl: "3600",
         upsert: false,
@@ -105,10 +154,27 @@ const Admin = () => {
       photo_url = data.publicUrl;
     }
 
+    if (videoFile) {
+      const path = `card-videos/${Date.now()}-${Math.random().toString(36).slice(2)}.${videoFile.name.split(".").pop() || "mp4"}`;
+      const { error: upErr } = await supabase.storage.from("card-videos").upload(path, videoFile, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+      if (upErr) {
+        toast.error("Video upload failed");
+        setPublishing(false);
+        return;
+      }
+      const { data } = supabase.storage.from("card-videos").getPublicUrl(path);
+      video_url = data.publicUrl;
+    }
+
     const { error } = await supabase.from("cards").insert({
       name: name.trim(),
       price: Number(price),
+      condition: condition,
       photo_url,
+      video_url,
       tcg_image_url: selectedTcg?.images?.large || selectedTcg?.images?.small || null,
       card_set: selectedTcg?.set?.name || null,
       card_number: selectedTcg?.number || null,
@@ -119,7 +185,7 @@ const Admin = () => {
       toast.error("Couldn't publish");
     } else {
       toast.success(`Published ${name}!`);
-      reset();
+      resetForm();
     }
   };
 
@@ -130,16 +196,60 @@ const Admin = () => {
     else toast("Deleted");
   };
 
+  const handleAdminUnclaim = async (cardId: string) => {
+    if (!confirm("Are you sure you want to unclaim this card and make it available again?")) return;
+    const { error } = await supabase
+      .from("cards")
+      .update({
+        status: "available",
+        claimed_by: null,
+        buyer_session_id: null,
+        claimed_at: null,
+      })
+      .eq("id", cardId);
+
+    if (error) {
+      toast.error("Failed to unclaim card.");
+      console.error("Error unclaiming card:", error);
+    } else {
+      toast.success("Card successfully unclaimed and made available.");
+    }
+  };
+
+  const handleEditClick = (card: DbCard) => {
+    setEditingCard(card);
+    setIsEditDialogOpen(true);
+  };
+
+  const setDefaultConditions = async () => {
+    if (!confirm("Are you sure you want to set 'Near Mint' as the condition for ALL cards that currently have no condition set? This cannot be undone.")) return;
+
+    setIsUpdatingConditions(true);
+    const { error } = await supabase
+      .from("cards")
+      .update({ condition: "Near Mint" })
+      .is("condition", null); // Only update cards where condition is currently NULL
+
+    if (error) {
+      console.error("Error setting default conditions:", error);
+      toast.error("Failed to set default conditions.");
+    } else {
+      toast.success("All cards without a condition are now 'Near Mint'!");
+      fetchCards(); // Re-fetch to update the UI
+    }
+    setIsUpdatingConditions(false);
+  };
+
   return (
     <div className="min-h-screen pb-12">
       <header className="border-b border-border">
         <div className="container py-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl gradient-gold flex items-center justify-center shadow-glow">
-              <Sparkles className="w-5 h-5 text-primary-foreground" />
+              <AppLogo className="w-full h-full" alt="Yanks TCG Logo" />
             </div>
             <div>
-              <h1 className="text-xl font-black">Seller Console</h1>
+              <h1 className="text-xl font-black">{SELLER_NAME} Console</h1>
               <p className="text-xs text-muted-foreground">Quick-list cards for the live drop</p>
             </div>
           </div>
@@ -148,6 +258,44 @@ const Admin = () => {
       </header>
 
       <main className="container py-6 grid lg:grid-cols-2 gap-6">
+        {/* Sale Time Manager */}
+        <Card className="gradient-card-bg border-border lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="w-5 h-5 text-primary" /> Manage Sale Start Time
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <SaleTimeManager />
+          </CardContent>
+        </Card>
+
+        {/* Utility Card for default condition */}
+        <Card className="gradient-card-bg border-border lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Wrench className="w-5 h-5 text-primary" /> Utilities
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <Label>Set Default Card Conditions</Label>
+              <p className="text-sm text-muted-foreground">
+                Click this button to set the condition of all cards that currently have no condition specified to "Near Mint".
+              </p>
+              <Button
+                onClick={setDefaultConditions}
+                disabled={isUpdatingConditions}
+                variant="secondary"
+                className="w-full sm:w-auto"
+              >
+                {isUpdatingConditions ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                Set All Unspecified Conditions to "Near Mint"
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Quick list form */}
         <Card className="gradient-card-bg border-border">
           <CardHeader>
@@ -156,7 +304,7 @@ const Admin = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Photo */}
+            {/* Photo Upload */}
             <div className="space-y-2">
               <Label>Card Photo</Label>
               {photoPreview ? (
@@ -176,13 +324,13 @@ const Admin = () => {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => fileRef.current?.click()}
+                    onClick={() => photoFileRef.current?.click()}
                     className="flex-1 min-w-[140px]"
                   >
-                    <Camera className="w-4 h-4 mr-2" /> Scan with Camera
+                    <Camera className="w-4 h-4 mr-2" /> Take Photo / Choose Photo
                   </Button>
                   <input
-                    ref={fileRef}
+                    ref={photoFileRef}
                     type="file"
                     accept="image/*"
                     capture="environment"
@@ -193,12 +341,49 @@ const Admin = () => {
               )}
             </div>
 
+            {/* Video Upload */}
+            <div className="space-y-2">
+              <Label>Card Video (Optional)</Label>
+              {videoPreview ? (
+                <div className="relative aspect-[3/4] max-w-[200px] rounded-xl overflow-hidden border border-border bg-black flex items-center justify-center">
+                  <video src={videoPreview} controls className="w-full h-full object-contain" />
+                  <Button
+                    size="icon"
+                    variant="destructive"
+                    className="absolute top-2 right-2 h-7 w-7"
+                    onClick={() => onPickVideo(null)}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex gap-2 flex-wrap">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => videoFileRef.current?.click()}
+                    className="flex-1 min-w-[140px]"
+                  >
+                    <Video className="w-4 h-4 mr-2" /> Record Video / Choose Video
+                  </Button>
+                  <input
+                    ref={videoFileRef}
+                    type="file"
+                    accept="video/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={(e) => onPickVideo(e.target.files?.[0] || null)}
+                  />
+                </div>
+              )}
+            </div>
+
             {/* TCG search */}
             <div className="space-y-2">
               <Label>Auto-fill from Pokémon TCG</Label>
               <div className="flex gap-2">
                 <Input
-                  placeholder="e.g. Charizard"
+                  placeholder="e.g. Charizard, base1 4 (for Base Set Charizard)"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && runSearch()}
@@ -226,7 +411,7 @@ const Admin = () => {
               )}
               {selectedTcg && (
                 <div className="flex items-center gap-2 text-xs p-2 rounded bg-primary/10 border border-primary/30">
-                  <Sparkles className="w-3.5 h-3.5 text-primary" />
+                  <AppLogo className="w-3.5 h-3.5" alt="Yanks TCG Logo" />
                   <span>{selectedTcg.set?.name} • {selectedTcg.rarity || "—"} • #{selectedTcg.number}</span>
                   <button onClick={() => setSelectedTcg(null)} className="ml-auto text-muted-foreground"><X className="w-3.5 h-3.5" /></button>
                 </div>
@@ -241,6 +426,21 @@ const Admin = () => {
               <div className="col-span-2">
                 <Label>Price ({CURRENCY})</Label>
                 <Input type="number" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="500" />
+              </div>
+              <div className="col-span-2">
+                <Label htmlFor="condition">Condition</Label>
+                <Select value={condition} onValueChange={setCondition}>
+                  <SelectTrigger id="condition">
+                    <SelectValue placeholder="Select condition" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Near Mint">Near Mint</SelectItem>
+                    <SelectItem value="Lightly Played">Lightly Played</SelectItem>
+                    <SelectItem value="Moderately Played">Moderately Played</SelectItem>
+                    <SelectItem value="Heavily Played">Heavily Played</SelectItem>
+                    <SelectItem value="Damaged">Damaged</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -267,13 +467,19 @@ const Admin = () => {
               )}
               {cards.map((c) => (
                 <div key={c.id} className="flex items-center gap-3 p-2 rounded-lg border border-border bg-background/40">
-                  {(c.tcg_image_url || c.photo_url) && (
-                    <img src={c.tcg_image_url || c.photo_url!} alt={c.name} className="w-12 h-16 object-cover rounded" />
+                  {(c.tcg_image_url || c.photo_url || c.video_url) && (
+                    <div className="w-12 h-16 flex-shrink-0 rounded overflow-hidden bg-muted flex items-center justify-center">
+                      {c.video_url ? (
+                        <video src={c.video_url} className="w-full h-full object-cover" muted playsInline />
+                      ) : (
+                        <img src={c.tcg_image_url || c.photo_url!} alt={c.name} className="w-full h-full object-cover" />
+                      )}
+                    </div>
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold truncate">{c.name}</p>
                     <p className="text-xs text-muted-foreground truncate">
-                      {c.card_set || "—"} • {CURRENCY}{Number(c.price).toFixed(0)}
+                      {c.card_set || "—"} • {CURRENCY}{Number(c.price).toFixed(0)} • {c.condition || "N/A"}
                     </p>
                     {c.status === "claimed" ? (
                       <p className="text-xs text-success font-semibold mt-0.5">✓ Claimed by {c.claimed_by}</p>
@@ -281,15 +487,34 @@ const Admin = () => {
                       <p className="text-xs text-muted-foreground mt-0.5">Available</p>
                     )}
                   </div>
-                  <Button size="icon" variant="ghost" onClick={() => remove(c.id)}>
-                    <Trash2 className="w-4 h-4 text-destructive" />
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button size="icon" variant="ghost" onClick={() => handleEditClick(c)}>
+                      <Edit className="w-4 h-4 text-muted-foreground" />
+                    </Button>
+                    {c.status === "claimed" && (
+                      <Button size="icon" variant="ghost" onClick={() => handleAdminUnclaim(c.id)}>
+                        <Lock className="w-4 h-4 text-primary" />
+                      </Button>
+                    )}
+                    <Button size="icon" variant="ghost" onClick={() => remove(c.id)}>
+                      <Trash2 className="w-4 h-4 text-destructive" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
       </main>
+
+      {editingCard && (
+        <EditCardDialog
+          card={editingCard}
+          open={isEditDialogOpen}
+          onOpenChange={setIsEditDialogOpen}
+          onSave={fetchCards}
+        />
+      )}
     </div>
   );
 };
