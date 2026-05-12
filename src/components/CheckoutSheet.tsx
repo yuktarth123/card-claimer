@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ShoppingBag, MessageCircle, X } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
 import { CURRENCY, SELLER_NAME, SELLER_WHATSAPP, DISCOUNT_RULES } from "@/config";
+import { useAppSettings } from "@/hooks/useAppSettings";
 
 type Card = Database["public"]["Tables"]["cards"]["Row"];
 
@@ -13,9 +14,11 @@ interface Props {
 }
 
 export function CheckoutSheet({ myCards, buyerName, onUnclaim }: Props) {
+  const { settings } = useAppSettings();
   const subtotal = myCards.reduce((s, c) => s + Number(c.price), 0);
 
   const calculateDiscount = (cartValue: number) => {
+    if (!settings.isHotSaleActive) return 0; // Only apply discount if hot sale is active
     for (const rule of DISCOUNT_RULES) {
       if (cartValue >= rule.minCartValue) {
         return rule.discount;
@@ -85,7 +88,7 @@ export function CheckoutSheet({ myCards, buyerName, onUnclaim }: Props) {
         </div>
 
         <SheetFooter className="border-t border-border pt-4 flex-col gap-3 sm:flex-col">
-          {discount > 0 && (
+          {settings.isHotSaleActive && discount > 0 && (
             <>
               <div className="flex justify-between items-center w-full text-sm text-muted-foreground">
                 <span>Subtotal</span>

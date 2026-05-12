@@ -7,12 +7,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Camera, Upload, Search, Trash2, Plus, X, Loader2, Sparkles } from "lucide-react";
+import { Camera, Upload, Search, Trash2, Plus, X, Loader2, Sparkles, Tag } from "lucide-react";
 import { CURRENCY } from "@/config";
+import { Switch } from "@/components/ui/switch";
+import { useAppSettings } from "@/hooks/useAppSettings";
 
 type DbCard = Database["public"]["Tables"]["cards"]["Row"];
 
 const Admin = () => {
+  const { settings, loading: settingsLoading, updateHotSaleStatus } = useAppSettings();
   const [cards, setCards] = useState<DbCard[]>([]);
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
@@ -156,6 +159,24 @@ const Admin = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Hot Sale Toggle */}
+            <div className="flex items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="hot-sale-toggle" className="text-base flex items-center gap-2">
+                  <Tag className="w-4 h-4 text-accent" /> Hot Sale Active
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Enable to apply discounts based on cart value.
+                </p>
+              </div>
+              <Switch
+                id="hot-sale-toggle"
+                checked={settings.isHotSaleActive}
+                onCheckedChange={updateHotSaleStatus}
+                disabled={settingsLoading}
+              />
+            </div>
+
             {/* Photo */}
             <div className="space-y-2">
               <Label>Card Photo</Label>
