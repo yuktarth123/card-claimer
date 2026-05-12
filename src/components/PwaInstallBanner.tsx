@@ -18,6 +18,7 @@ const PwaInstallBanner: React.FC<PwaInstallBannerProps> = ({ className }) => {
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
+      console.log("beforeinstallprompt event fired!"); // Added for debugging
       // Always show the banner if the prompt is available
       setShowBanner(true);
     };
