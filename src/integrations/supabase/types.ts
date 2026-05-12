@@ -96,6 +96,7 @@ export type Database = {
           card_set: string | null
           claimed_at: string | null
           claimed_by: string | null
+          condition: string | null
           created_at: string
           id: string
           name: string
@@ -104,6 +105,7 @@ export type Database = {
           rarity: string | null
           status: string
           tcg_image_url: string | null
+          video_url: string | null
         }
         SetofOptions: {
           from: "*"
@@ -120,6 +122,7 @@ export type Database = {
           card_set: string | null
           claimed_at: string | null
           claimed_by: string | null
+          condition: string | null
           created_at: string
           id: string
           name: string
@@ -128,6 +131,7 @@ export type Database = {
           rarity: string | null
           status: string
           tcg_image_url: string | null
+          video_url: string | null
         }
         SetofOptions: {
           from: "*"
@@ -155,16 +159,16 @@ export type Tables<
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: infer S extends keyof DatabaseWithoutInternals
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (DatabaseWithoutInternals[S]["Tables"] &
-        DatabaseWithoutInternals[S]["Views"])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
-  schema: infer S extends keyof DatabaseWithoutInternals
+  schema: keyof DatabaseWithoutInternals
 }
-  ? (DatabaseWithoutInternals[S]["Tables"] &
-      DatabaseWithoutInternals[S]["Views"])[TableName] extends {
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
@@ -184,14 +188,14 @@ export type TablesInsert<
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: infer S extends keyof DatabaseWithoutInternals
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[S]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
-  schema: infer S extends keyof DatabaseWithoutInternals
+  schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[S]["Tables"][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
@@ -209,14 +213,14 @@ export type TablesUpdate<
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: infer S extends keyof DatabaseWithoutInternals
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[S]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
-  schema: infer S extends keyof DatabaseWithoutInternals
+  schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[S]["Tables"][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
@@ -234,14 +238,14 @@ export type Enums<
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: infer S extends keyof DatabaseWithoutInternals
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[S]["Enums"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
-  schema: infer S extends keyof DatabaseWithoutInternals
+  schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[S]["Enums"][EnumName]
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
@@ -251,14 +255,14 @@ export type CompositeTypes<
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: infer S extends keyof DatabaseWithoutInternals
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[S]["CompositeTypes"]
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
-  schema: infer S extends keyof DatabaseWithoutInternals
+  schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[S]["CompositeTypes"][CompositeTypeName]
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
