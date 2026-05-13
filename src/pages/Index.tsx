@@ -179,7 +179,7 @@ const Index = () => {
     }
   };
 
-  const handleUnclaim = async (card: Card) => {
+  const handleUnclaim = async (card: Card, toastIdToDismiss?: string | number) => { // Updated to accept toastIdToDismiss as string | number
     if (typeof navigator !== "undefined" && "vibrate" in navigator) {
       navigator.vibrate?.(10);
     }
@@ -187,8 +187,14 @@ const Index = () => {
       _card_id: card.id,
       _session_id: sessionId,
     });
-    if (error) toast.error("Couldn't unclaim");
-    else toast("Released", { description: card.name });
+    if (error) {
+      toast.error("Couldn't unclaim");
+    } else {
+      toast("Released", { description: card.name });
+      if (toastIdToDismiss) {
+        toast.dismiss(toastIdToDismiss); // Dismiss the specific warning toast
+      }
+    }
   };
 
   const availableCount = cards.filter((c) => c.status === "available").length;

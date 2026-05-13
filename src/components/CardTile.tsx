@@ -8,6 +8,7 @@ import ClaimCountdown from "./ClaimCountdown";
 import { addMinutes, isPast } from "date-fns";
 import React, { useState, useMemo } from "react";
 import MediaCarouselDialog from "./MediaCarouselDialog";
+import { toast } from "sonner"; // Import toast from sonner
 
 type Card = Database["public"]["Tables"]["cards"]["Row"];
 
@@ -15,7 +16,7 @@ interface Props {
   card: Card;
   isMine: boolean;
   onClaim: (card: Card) => void;
-  onUnclaim: (card: Card) => void;
+  onUnclaim: (card: Card, toastId?: string | number) => void; // Updated to accept optional toastId as string | number
   disabled?: boolean;
   isSaleLive: boolean;
 }
@@ -28,12 +29,10 @@ export function CardTile({ card, isMine, onClaim, onUnclaim, disabled, isSaleLiv
   const claimedAtDate = card.claimed_at ? new Date(card.claimed_at) : null;
   const isClaimExpired = claimedAtDate ? isPast(addMinutes(claimedAtDate, CLAIM_DURATION_MINUTES)) : false;
 
-  // This function will now be called when the ClaimCountdown timer expires for any card.
-  // The Supabase `unclaim_card` RPC will handle the logic of whether it's truly expired
-  // and can be unclaimed by any client.
   const handleUnclaimOnExpire = () => {
-    if (isClaimExpired) { // Removed the `isMine` check
-      onUnclaim(card);
+    if (isClaimExpired) {
+      const toastId = toast.warning(`Claim expired`, { description: `${card.name} was released.` });
+      onUnclaim(card, toastId); // Pass the toastId to onUnclaim
     }
   };
 
