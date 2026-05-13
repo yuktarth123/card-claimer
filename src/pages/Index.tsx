@@ -187,7 +187,15 @@ const Index = () => {
 
   return (
     <div className="min-h-screen pb-28">
-      <NameGate open={!name && isSaleLive} onSubmit={setName} />
+      <NameGate
+        open={!name && isSaleLive}
+        onSubmit={(n) => {
+          setName(n);
+          toast.success(`Welcome, ${n}! 👋`, {
+            description: isSaleLive ? "The sale is live — start claiming!" : "Get ready, the sale starts soon.",
+          });
+        }}
+      />
       <PwaInstallBanner /> {/* Integrated the PWA Install Banner here */}
 
       {/* Hero */}
@@ -301,7 +309,7 @@ const Index = () => {
         )}
       </main>
 
-      <CheckoutSheet myCards={myCards} buyerName={name} onUnclaim={handleUnclaim} />
+      <CheckoutSheet myCards={myCards} buyerName={name} onUnclaim={handleUnclaim} isSaleLive={isSaleLive} />
     </div>
   );
 };
