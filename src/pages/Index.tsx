@@ -19,8 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import WhatsAppBanner from "@/components/WhatsAppBanner";
-import PwaInstallBanner from "@/components/PwaInstallBanner";
-import BackgroundMusic from "@/components/BackgroundMusic"; // Import the new BackgroundMusic component
+import PwaInstallBanner from "@/components/PwaInstallBanner"; // Import the new PWA banner
 
 type Card = Database["public"]["Tables"]["cards"]["Row"];
 type Filter = "all" | "available" | "mine";
@@ -206,7 +205,6 @@ const Index = () => {
         }}
       />
       <PwaInstallBanner /> {/* Integrated the PWA Install Banner here */}
-      <BackgroundMusic /> {/* Integrated the BackgroundMusic component here */}
 
       {/* Hero */}
       <header className="relative overflow-hidden border-b border-border">
