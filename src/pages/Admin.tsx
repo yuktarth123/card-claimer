@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Camera, Upload, Search, Trash2, Plus, X, Loader2, Lock, Clock, Edit, Video, Wrench } from "lucide-react"; // Added Wrench icon
+import { Camera, Upload, Search, Trash2, Plus, X, Loader2, Lock, Clock, Edit, Video, Wrench, Filter } from "lucide-react"; // Added Filter icon
 import { CURRENCY, USD_TO_INR_RATE, SELLER_NAME } from "@/config";
 import { SaleTimeManager } from "@/components/SaleTimeManager";
 import AppLogo from "@/components/AppLogo";
@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { EditCardDialog } from "@/components/EditCardDialog";
 
 type DbCard = Database["public"]["Tables"]["cards"]["Row"];
+type PriceFilter = "all" | "under-100" | "100-500" | "500-1000" | "1000-plus";
 
 const Admin = () => {
   const [cards, setCards] = useState<DbCard[]>([]);
@@ -31,18 +32,31 @@ const Admin = () => {
   const [results, setResults] = useState<TCGCard[]>([]);
   const [selectedTcg, setSelectedTcg] = useState<TCGCard | null>(null);
   const [publishing, setPublishing] = useState(false);
-  const [isUpdatingConditions, setIsUpdatingConditions] = useState(false); // New state for condition update loading
+  const [isUpdatingConditions, setIsUpdatingConditions] = useState(false);
   const photoFileRef = useRef<HTMLInputElement>(null);
   const videoFileRef = useRef<HTMLInputElement>(null);
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<DbCard | null>(null);
+  const [priceFilter, setPriceFilter] = useState<PriceFilter>("all"); // New state for price filter
 
   const fetchCards = async () => {
-    const { data: cardsData, error: cardsError } = await supabase
-      .from("cards")
-      .select("*")
-      .order("created_at", { ascending: false });
+    let query = supabase.from("cards").select("*");
+
+    // Apply price filter
+    if (priceFilter === "under-100") {
+      query = query.lt("price", 100);
+    } else if (priceFilter === "100-500") {
+      query = query.gte("price", 100).lte("price", 500);
+    } else if (priceFilter === "500-1000") {
+      query = query.gte("price", 500).lte("price", 1000);
+    } else if (priceFilter === "1000-plus") {
+      query = query.gte("price", 1000);
+    }
+
+    query = query.order("created_at", { ascending: false });
+
+    const { data: cardsData, error: cardsError } = await query;
 
     if (cardsError) {
       console.error("Error fetching cards:", cardsError);
@@ -65,7 +79,7 @@ const Admin = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [priceFilter]); // Re-fetch when priceFilter changes
 
   const onPickPhoto = (file: File | null) => {
     setPhotoFile(file);
@@ -471,10 +485,27 @@ const Admin = () => {
           </CardContent>
         </Card>
 
-        {/* Listed cards */}
+        {/* Live Listings */}
         <Card className="gradient-card-bg border-border">
           <CardHeader>
-            <CardTitle>Live Listings ({cards.length})</CardTitle>
+            <CardTitle className="flex items-center justify-between">
+              <span>Live Listings ({cards.length})</span>
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-muted-foreground" />
+                <Select value={priceFilter} onValueChange={(value: PriceFilter) => setPriceFilter(value)}>
+                  <SelectTrigger className="w-[160px]">
+                    <SelectValue placeholder="Filter by Price" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Prices</SelectItem>
+                    <SelectItem value="under-100">Under {CURRENCY}100</SelectItem>
+                    <SelectItem value="100-500">{CURRENCY}100 - {CURRENCY}500</SelectItem>
+                    <SelectItem value="500-1000">{CURRENCY}500 - {CURRENCY}1000</SelectItem>
+                    <SelectItem value="1000-plus">{CURRENCY}1000+</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2 max-h-[70vh] overflow-y-auto">
