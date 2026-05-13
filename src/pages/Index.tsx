@@ -30,7 +30,7 @@ const Index = () => {
   const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("all");
-  const [sortOrder, setSortOrder] = useState<SortOrder>("none");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("price-desc"); // Changed default sort order
   const [isSaleLive, setIsSaleLive] = useState(false);
   const [saleStartTime, setSaleStartTime] = useState<string | null>(null);
 
@@ -133,6 +133,10 @@ const Index = () => {
       filteredCards = [...filteredCards].sort((a, b) => Number(a.price) - Number(b.price));
     } else if (sortOrder === "price-desc") {
       filteredCards = [...filteredCards].sort((a, b) => Number(b.price) - Number(a.price));
+    } else {
+      // Default sort (created_at descending) is already handled by the initial fetch
+      // If "none" is selected, we just use the initially fetched order.
+      // No explicit sort needed here if the initial fetch already orders by created_at.
     }
 
     return filteredCards;
