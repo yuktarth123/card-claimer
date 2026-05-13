@@ -8,6 +8,7 @@ import { useMemo } from "react";
 import ClaimCountdown from "./ClaimCountdown";
 import { supabase } from "@/integrations/supabase/client";
 import { useBuyer } from "@/hooks/useBuyer";
+import { toast } from "sonner";
 
 type Card = Database["public"]["Tables"]["cards"]["Row"];
 
@@ -15,9 +16,10 @@ interface Props {
   myCards: Card[];
   buyerName: string;
   onUnclaim: (card: Card) => void;
+  isSaleLive?: boolean;
 }
 
-export function CheckoutSheet({ myCards, buyerName, onUnclaim }: Props) {
+export function CheckoutSheet({ myCards, buyerName, onUnclaim, isSaleLive = true }: Props) {
   const { sessionId } = useBuyer();
   const total = myCards.reduce((s, c) => s + Number(c.price), 0);
 
@@ -47,6 +49,9 @@ export function CheckoutSheet({ myCards, buyerName, onUnclaim }: Props) {
     // Lock the cards in so they can't be taken back by others
     await supabase.rpc("finalize_claims", { _session_id: sessionId });
   };
+
+  // Hide the cart entirely until the sale is live
+  if (!isSaleLive) return null;
 
   return (
     <Sheet>
@@ -132,8 +137,15 @@ export function CheckoutSheet({ myCards, buyerName, onUnclaim }: Props) {
                   </p>
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-bold text-primary">{CURRENCY}{Number(c.price).toFixed(0)}</p>
-                    {c.claimed_at && (
-                      <ClaimCountdown claimedAt={c.claimed_at} onExpired={() => onUnclaim(c)} className="text-[10px] px-1.5 py-0.5" />
+                {c.claimed_at && (
+                      <ClaimCountdown
+                        claimedAt={c.claimed_at}
+                        onExpired={() => {
+                          toast.warning(`Claim expired`, { description: `${c.name} was released.` });
+                          onUnclaim(c);
+                        }}
+                        className="text-[10px] px-1.5 py-0.5"
+                      />
                     )}
                   </div>
                 </div>
@@ -167,16 +179,18 @@ export function CheckoutSheet({ myCards, buyerName, onUnclaim }: Props) {
               <AlertTriangle className="w-4 h-4" /> Some claimed cards have expired. Please unclaim them.
             </p>
           )}
-          <Button
-            asChild
-            disabled={myCards.length === 0 || hasExpiredCards}
-            className="w-full h-12 bg-success hover:bg-success/90 text-success-foreground font-bold text-base"
-          >
-            <a href={waLink} target="_blank" rel="noopener noreferrer" onClick={handleFinalize}>
-              <MessageCircle className="w-5 h-5 mr-2" />
-              Finalize via WhatsApp
-            </a>
-          </Button>
+          {myCards.length > 0 && (
+            <Button
+              asChild
+              disabled={hasExpiredCards}
+              className="w-full h-12 bg-success hover:bg-success/90 text-success-foreground font-bold text-base"
+            >
+              <a href={waLink} target="_blank" rel="noopener noreferrer" onClick={handleFinalize}>
+                <MessageCircle className="w-5 h-5 mr-2" />
+                Finalize via WhatsApp
+              </a>
+            </Button>
+          )}
         </SheetFooter>
       </SheetContent>
     </Sheet>
