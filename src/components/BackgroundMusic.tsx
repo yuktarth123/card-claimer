@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Volume2, VolumeX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner'; // Import sonner toast
 
 const LOCAL_STORAGE_KEY = 'tcg_background_music_muted';
 
@@ -17,6 +18,7 @@ const BackgroundMusic: React.FC = () => {
     return false;
   });
   const [hasInteracted, setHasInteracted] = useState(false); // To track user interaction for autoplay
+  const [hasShownPlayToast, setHasShownPlayToast] = useState(false); // To show toast only once
 
   useEffect(() => {
     audioRef.current = new Audio('/11 - Route 1.mp3');
@@ -50,15 +52,24 @@ const BackgroundMusic: React.FC = () => {
 
       // Attempt to play only after user interaction and if not muted
       if (hasInteracted && !isMuted) {
-        audioRef.current.play().catch(error => {
+        audioRef.current.play().then(() => {
+          if (!hasShownPlayToast) {
+            toast.info("Background music playing!", {
+              description: "Tap the music icon to mute/unmute.",
+              duration: 5000,
+            });
+            setHasShownPlayToast(true);
+          }
+        }).catch(error => {
           console.warn("Autoplay prevented:", error);
-          // If autoplay is prevented, we can't do much, but the user can still unmute manually.
+          // If autoplay is prevented, the user can still unmute manually.
+          // The toast won't show if autoplay fails, which is fine.
         });
       } else if (isMuted) {
         audioRef.current.pause();
       }
     }
-  }, [isMuted, hasInteracted]);
+  }, [isMuted, hasInteracted, hasShownPlayToast]); // Add hasShownPlayToast to dependencies
 
   const handleToggleMute = () => {
     setIsMuted(prev => !prev);
@@ -69,7 +80,7 @@ const BackgroundMusic: React.FC = () => {
   };
 
   return (
-    <div className="fixed bottom-4 right-4 z-50">
+    <div className="fixed bottom-20 right-4 z-50"> {/* Changed bottom-4 to bottom-20 */}
       <Button
         variant="outline"
         size="icon"
