@@ -83,6 +83,21 @@ export type Database = {
         }
         Relationships: []
       }
+      settings: {
+        Row: {
+          id: number
+          is_hot_sale_active: boolean
+        }
+        Insert: {
+          id?: number
+          is_hot_sale_active?: boolean
+        }
+        Update: {
+          id?: number
+          is_hot_sale_active?: boolean
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -162,6 +177,19 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "cards"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_hot_sale_status: {
+        Args: { _is_active: boolean }
+        Returns: {
+          id: number
+          is_hot_sale_active: boolean
+        }
+        SetofOptions: {
+          from: "*"
+          to: "settings"
           isOneToOne: true
           isSetofReturn: false
         }
