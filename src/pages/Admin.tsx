@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Camera, Upload, Search, Trash2, Plus, X, Loader2, Lock, Clock, Edit, Video, Wrench, Filter } from "lucide-react"; // Added Filter icon
+import { Camera, Upload, Search, Trash2, Plus, X, Loader2, Lock, Clock, Edit, Video, Wrench, Filter, ArrowDownWideNarrow, ArrowUpWideNarrow } from "lucide-react"; // Added Filter, ArrowDownWideNarrow, ArrowUpWideNarrow icons
 import { CURRENCY, USD_TO_INR_RATE, SELLER_NAME } from "@/config";
 import { SaleTimeManager } from "@/components/SaleTimeManager";
 import AppLogo from "@/components/AppLogo";
@@ -16,12 +16,13 @@ import { EditCardDialog } from "@/components/EditCardDialog";
 
 type DbCard = Database["public"]["Tables"]["cards"]["Row"];
 type PriceFilter = "all" | "under-100" | "100-500" | "500-1000" | "1000-plus";
+type SortOrder = "newest" | "price-asc" | "price-desc"; // New type for sort order
 
 const Admin = () => {
   const [cards, setCards] = useState<DbCard[]>([]);
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
-  const [salePrice, setSalePrice] = useState(""); // New state for sale price
+  const [salePrice, setSalePrice] = useState("");
   const [condition, setCondition] = useState<string>("Near Mint");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -38,7 +39,8 @@ const Admin = () => {
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<DbCard | null>(null);
-  const [priceFilter, setPriceFilter] = useState<PriceFilter>("all"); // New state for price filter
+  const [priceFilter, setPriceFilter] = useState<PriceFilter>("all");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("newest"); // New state for sort order
 
   const fetchCards = async () => {
     let query = supabase.from("cards").select("*");
@@ -54,7 +56,15 @@ const Admin = () => {
       query = query.gte("price", 1000);
     }
 
-    query = query.order("created_at", { ascending: false });
+    // Apply sort order
+    if (sortOrder === "price-asc") {
+      query = query.order("price", { ascending: true });
+    } else if (sortOrder === "price-desc") {
+      query = query.order("price", { ascending: false });
+    } else {
+      // Default to newest
+      query = query.order("created_at", { ascending: false });
+    }
 
     const { data: cardsData, error: cardsError } = await query;
 
@@ -79,7 +89,7 @@ const Admin = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [priceFilter]); // Re-fetch when priceFilter changes
+  }, [priceFilter, sortOrder]); // Re-fetch when priceFilter or sortOrder changes
 
   const onPickPhoto = (file: File | null) => {
     setPhotoFile(file);
@@ -133,7 +143,7 @@ const Admin = () => {
   const resetForm = () => {
     setName("");
     setPrice("");
-    setSalePrice(""); // Reset sale price
+    setSalePrice("");
     setCondition("Near Mint");
     setPhotoFile(null);
     setPhotoPreview(null);
@@ -197,7 +207,7 @@ const Admin = () => {
     const { error } = await supabase.from("cards").insert({
       name: name.trim(),
       price: parsedPrice,
-      sale_price: parsedSalePrice, // Insert sale price
+      sale_price: parsedSalePrice,
       condition: condition,
       photo_url,
       video_url,
@@ -254,14 +264,14 @@ const Admin = () => {
     const { error } = await supabase
       .from("cards")
       .update({ condition: "Near Mint" })
-      .is("condition", null); // Only update cards where condition is currently NULL
+      .is("condition", null);
 
     if (error) {
       console.error("Error setting default conditions:", error);
       toast.error("Failed to set default conditions.");
     } else {
       toast.success("All cards without a condition are now 'Near Mint'!");
-      fetchCards(); // Re-fetch to update the UI
+      fetchCards();
     }
     setIsUpdatingConditions(false);
   };
@@ -491,19 +501,40 @@ const Admin = () => {
             <CardTitle className="flex items-center justify-between">
               <span>Live Listings ({cards.length})</span>
               <div className="flex items-center gap-2">
-                <Filter className="w-4 h-4 text-muted-foreground" />
-                <Select value={priceFilter} onValueChange={(value: PriceFilter) => setPriceFilter(value)}>
-                  <SelectTrigger className="w-[160px]">
-                    <SelectValue placeholder="Filter by Price" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Prices</SelectItem>
-                    <SelectItem value="under-100">Under {CURRENCY}100</SelectItem>
-                    <SelectItem value="100-500">{CURRENCY}100 - {CURRENCY}500</SelectItem>
-                    <SelectItem value="500-1000">{CURRENCY}500 - {CURRENCY}1000</SelectItem>
-                    <SelectItem value="1000-plus">{CURRENCY}1000+</SelectItem>
-                  </SelectContent>
-                </Select>
+                {/* Price Filter */}
+                <div className="flex items-center gap-1">
+                  <Filter className="w-4 h-4 text-muted-foreground" />
+                  <Select value={priceFilter} onValueChange={(value: PriceFilter) => setPriceFilter(value)}>
+                    <SelectTrigger className="w-[160px]">
+                      <SelectValue placeholder="Filter by Price" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Prices</SelectItem>
+                      <SelectItem value="under-100">Under {CURRENCY}100</SelectItem>
+                      <SelectItem value="100-500">{CURRENCY}100 - {CURRENCY}500</SelectItem>
+                      <SelectItem value="500-1000">{CURRENCY}500 - {CURRENCY}1000</SelectItem>
+                      <SelectItem value="1000-plus">{CURRENCY}1000+</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div >
+                {/* Sort Order */}
+                <div className="flex items-center gap-1">
+                  {sortOrder === "price-asc" ? (
+                    <ArrowUpWideNarrow className="w-4 h-4 text-muted-foreground" />
+                  ) : sortOrder === "price-desc" ? (
+                    <ArrowDownWideNarrow className="w-4 h-4 text-muted-foreground" />
+                  ) : null}
+                  <Select value={sortOrder} onValueChange={(value: SortOrder) => setSortOrder(value)}>
+                    <SelectTrigger className="w-[160px]">
+                      <SelectValue placeholder="Sort by" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="newest">Newest First</SelectItem>
+                      <SelectItem value="price-asc">Price: Low to High</SelectItem>
+                      <SelectItem value="price-desc">Price: High to Low</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </CardTitle>
           </CardHeader>
