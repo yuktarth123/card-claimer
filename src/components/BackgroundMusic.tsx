@@ -17,7 +17,6 @@ const BackgroundMusic: React.FC = () => {
     }
     return false;
   });
-  const [hasInteracted, setHasInteracted] = useState(false); // To track user interaction for autoplay
   const [hasShownPlayToast, setHasShownPlayToast] = useState(false); // To show toast only once for initial autoplay
 
   useEffect(() => {
@@ -26,33 +25,8 @@ const BackgroundMusic: React.FC = () => {
     audioRef.current.volume = 0.5; // Increased default volume
     audioRef.current.muted = isMuted; // Set initial mute state based on local storage
 
-    const handleUserInteraction = () => {
-      setHasInteracted(true);
-      document.removeEventListener('click', handleUserInteraction);
-      document.removeEventListener('keydown', handleUserInteraction);
-    };
-
-    // Add event listeners to detect first user interaction
-    document.addEventListener('click', handleUserInteraction);
-    document.addEventListener('keydown', handleUserInteraction);
-
-    return () => {
-      document.removeEventListener('click', handleUserInteraction);
-      document.removeEventListener('keydown', handleUserInteraction);
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-    };
-  }, []); // Empty dependency array for initial setup
-
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.muted = isMuted;
-      localStorage.setItem(LOCAL_STORAGE_KEY, String(isMuted));
-
-      // Attempt to play only after user interaction and if not muted
-      if (!isMuted && hasInteracted) {
+    const tryPlayMusic = () => {
+      if (audioRef.current && !audioRef.current.muted) {
         audioRef.current.play().then(() => {
           console.log("Background music started playing.");
           // Only show toast if it hasn't been shown for initial autoplay
@@ -65,19 +39,51 @@ const BackgroundMusic: React.FC = () => {
           }
         }).catch(error => {
           console.warn("Autoplay prevented:", error);
-          // If autoplay is prevented, the user can still unmute manually.
-          // The toast won't show if autoplay fails, which is fine.
+          // Do not show an error toast here, as it's expected for initial autoplay attempts
+          // if no interaction has happened yet. The manual unmute will handle the error toast.
         });
-      } else if (isMuted) {
-        audioRef.current.pause();
       }
+    };
+
+    const handleFirstInteraction = () => {
+      // This function will be called on the very first click/keydown
+      // We try to play music here, as it's a direct user gesture.
+      tryPlayMusic();
+      // Remove listeners after the first interaction
+      document.removeEventListener('click', handleFirstInteraction);
+      document.removeEventListener('keydown', handleFirstInteraction);
+    };
+
+    // Add event listeners to detect first user interaction
+    document.addEventListener('click', handleFirstInteraction);
+    document.addEventListener('keydown', handleFirstInteraction);
+
+    // Also try to play immediately if not muted (e.g., on page refresh after previous interaction)
+    if (!isMuted) {
+      tryPlayMusic();
     }
-  }, [isMuted, hasInteracted, hasShownPlayToast]); // Dependencies for playing/pausing
+
+    return () => {
+      document.removeEventListener('click', handleFirstInteraction);
+      document.removeEventListener('keydown', handleFirstInteraction);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []); // Empty dependency array for initial setup
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.muted = isMuted;
+      localStorage.setItem(LOCAL_STORAGE_KEY, String(isMuted));
+    }
+  }, [isMuted]); // Only react to isMuted changes for audio.muted and localStorage
 
   const handleToggleMute = () => {
     setIsMuted(prev => {
       const newMutedState = !prev;
-      localStorage.setItem(LOCAL_STORAGE_KEY, String(newMutedState)); // Update local storage immediately
+      // localStorage.setItem(LOCAL_STORAGE_KEY, String(newMutedState)); // This is now handled by the useEffect above
 
       if (audioRef.current) {
         audioRef.current.muted = newMutedState;
@@ -87,6 +93,8 @@ const BackgroundMusic: React.FC = () => {
               description: "Tap the music icon to mute/unmute.",
               duration: 3000, // Shorter duration for manual toggle
             });
+            // Ensure hasShownPlayToast is set if manually unmuted and played
+            setHasShownPlayToast(true);
           }).catch(error => {
             console.warn("Manual play prevented:", error);
             toast.error("Could not play music.", {
@@ -99,16 +107,12 @@ const BackgroundMusic: React.FC = () => {
           toast.info("Background music muted.");
         }
       }
-      // Ensure interaction is marked true if user manually toggles mute
-      if (!hasInteracted) {
-        setHasInteracted(true);
-      }
       return newMutedState;
     });
   };
 
   return (
-    <div className="fixed bottom-20 right-4 z-50"> {/* Changed bottom-4 to bottom-20 */}
+    <div className="fixed bottom-20 right-4 z-50">
       <Button
         variant="outline"
         size="icon"
