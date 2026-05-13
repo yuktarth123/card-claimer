@@ -483,6 +483,8 @@ const Admin = () => {
                     </p>
                     {c.status === "claimed" ? (
                       <p className="text-xs text-success font-semibold mt-0.5">✓ Claimed by {c.claimed_by}</p>
+                    ) : c.status === "checked_out" ? (
+                      <p className="text-xs text-primary font-semibold mt-0.5">💰 Sold to {c.claimed_by}</p>
                     ) : (
                       <p className="text-xs text-muted-foreground mt-0.5">Available</p>
                     )}
@@ -491,7 +493,7 @@ const Admin = () => {
                     <Button size="icon" variant="ghost" onClick={() => handleEditClick(c)}>
                       <Edit className="w-4 h-4 text-muted-foreground" />
                     </Button>
-                    {c.status === "claimed" && (
+                    {(c.status === "claimed" || c.status === "checked_out") && (
                       <Button size="icon" variant="ghost" onClick={() => handleAdminUnclaim(c.id)}>
                         <Lock className="w-4 h-4 text-primary" />
                       </Button>
