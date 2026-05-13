@@ -28,8 +28,11 @@ export function CardTile({ card, isMine, onClaim, onUnclaim, disabled, isSaleLiv
   const claimedAtDate = card.claimed_at ? new Date(card.claimed_at) : null;
   const isClaimExpired = claimedAtDate ? isPast(addMinutes(claimedAtDate, CLAIM_DURATION_MINUTES)) : false;
 
+  // This function will now be called when the ClaimCountdown timer expires for any card.
+  // The Supabase `unclaim_card` RPC will handle the logic of whether it's truly expired
+  // and can be unclaimed by any client.
   const handleUnclaimOnExpire = () => {
-    if (isMine && isClaimExpired) {
+    if (isClaimExpired) { // Removed the `isMine` check
       onUnclaim(card);
     }
   };
@@ -126,6 +129,12 @@ export function CardTile({ card, isMine, onClaim, onUnclaim, disabled, isSaleLiv
                 </div>
               )}
             </>
+          )}
+          {/* For cards claimed by others, show countdown if not expired, otherwise show as available */}
+          {claimed && !isMine && card.claimed_at && !isClaimExpired && (
+            <div className="absolute bottom-2 left-2">
+              <ClaimCountdown claimedAt={card.claimed_at} onExpired={handleUnclaimOnExpire} className="text-[10px] px-1.5 py-0.5" />
+            </div>
           )}
         </div>
 
