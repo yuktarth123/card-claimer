@@ -42,6 +42,7 @@ const Index = () => {
       const { data: cardsData, error: cardsError } = await supabase
         .from("cards")
         .select("*")
+        .neq("status", "checked_out")
         .order("created_at", { ascending: false });
 
       if (mounted && cardsData) setCards(cardsData);
@@ -80,10 +81,17 @@ const Index = () => {
         (payload) => {
           setCards((prev) => {
             if (payload.eventType === "INSERT") {
-              return [payload.new as Card, ...prev];
+              const c = payload.new as Card;
+              if (c.status === "checked_out") return prev;
+              return [c, ...prev];
             }
             if (payload.eventType === "UPDATE") {
-              return prev.map((c) => (c.id === (payload.new as Card).id ? (payload.new as Card) : c));
+              const next = payload.new as Card;
+              if (next.status === "checked_out") {
+                return prev.filter((c) => c.id !== next.id);
+              }
+              const exists = prev.some((c) => c.id === next.id);
+              return exists ? prev.map((c) => (c.id === next.id ? next : c)) : [next, ...prev];
             }
             if (payload.eventType === "DELETE") {
               return prev.filter((c) => c.id !== (payload.old as Card).id);
