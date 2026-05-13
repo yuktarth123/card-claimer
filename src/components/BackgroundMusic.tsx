@@ -18,12 +18,13 @@ const BackgroundMusic: React.FC = () => {
     return false;
   });
   const [hasInteracted, setHasInteracted] = useState(false); // To track user interaction for autoplay
-  const [hasShownPlayToast, setHasShownPlayToast] = useState(false); // To show toast only once
+  const [hasShownPlayToast, setHasShownPlayToast] = useState(false); // To show toast only once for initial autoplay
 
   useEffect(() => {
     audioRef.current = new Audio('/11 - Route 1.mp3');
     audioRef.current.loop = true;
-    audioRef.current.volume = 0.3; // Set a default volume
+    audioRef.current.volume = 0.5; // Increased default volume
+    audioRef.current.muted = isMuted; // Set initial mute state based on local storage
 
     const handleUserInteraction = () => {
       setHasInteracted(true);
@@ -43,7 +44,7 @@ const BackgroundMusic: React.FC = () => {
         audioRef.current = null;
       }
     };
-  }, []);
+  }, []); // Empty dependency array for initial setup
 
   useEffect(() => {
     if (audioRef.current) {
@@ -51,8 +52,10 @@ const BackgroundMusic: React.FC = () => {
       localStorage.setItem(LOCAL_STORAGE_KEY, String(isMuted));
 
       // Attempt to play only after user interaction and if not muted
-      if (hasInteracted && !isMuted) {
+      if (!isMuted && hasInteracted) {
         audioRef.current.play().then(() => {
+          console.log("Background music started playing.");
+          // Only show toast if it hasn't been shown for initial autoplay
           if (!hasShownPlayToast) {
             toast.info("Background music playing!", {
               description: "Tap the music icon to mute/unmute.",
@@ -69,14 +72,39 @@ const BackgroundMusic: React.FC = () => {
         audioRef.current.pause();
       }
     }
-  }, [isMuted, hasInteracted, hasShownPlayToast]); // Add hasShownPlayToast to dependencies
+  }, [isMuted, hasInteracted, hasShownPlayToast]); // Dependencies for playing/pausing
 
   const handleToggleMute = () => {
-    setIsMuted(prev => !prev);
-    // Ensure interaction is marked true if user manually toggles mute
-    if (!hasInteracted) {
-      setHasInteracted(true);
-    }
+    setIsMuted(prev => {
+      const newMutedState = !prev;
+      localStorage.setItem(LOCAL_STORAGE_KEY, String(newMutedState)); // Update local storage immediately
+
+      if (audioRef.current) {
+        audioRef.current.muted = newMutedState;
+        if (!newMutedState) { // If unmuting
+          audioRef.current.play().then(() => {
+            toast.info("Background music playing!", {
+              description: "Tap the music icon to mute/unmute.",
+              duration: 3000, // Shorter duration for manual toggle
+            });
+          }).catch(error => {
+            console.warn("Manual play prevented:", error);
+            toast.error("Could not play music.", {
+              description: "Your browser might be blocking autoplay. Please check browser settings.",
+              duration: 5000,
+            });
+          });
+        } else { // If muting
+          audioRef.current.pause();
+          toast.info("Background music muted.");
+        }
+      }
+      // Ensure interaction is marked true if user manually toggles mute
+      if (!hasInteracted) {
+        setHasInteracted(true);
+      }
+      return newMutedState;
+    });
   };
 
   return (
