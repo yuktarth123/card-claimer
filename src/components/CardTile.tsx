@@ -21,7 +21,8 @@ interface Props {
 }
 
 export function CardTile({ card, isMine, onClaim, onUnclaim, disabled, isSaleLive }: Props) {
-  const claimed = card.status === "claimed";
+  const claimed = card.status !== "available";
+  const soldOut = card.status === "checked_out";
   const isClaimButtonDisabled = disabled || !isSaleLive;
 
   const claimedAtDate = card.claimed_at ? new Date(card.claimed_at) : null;
@@ -107,7 +108,7 @@ export function CardTile({ card, isMine, onClaim, onUnclaim, disabled, isSaleLiv
             <div className="absolute inset-0 flex items-center justify-center bg-background/70 backdrop-blur-sm animate-claim-pop">
               <div className="text-center px-4">
                 <Lock className="w-7 h-7 mx-auto mb-1 text-muted-foreground" />
-                <p className="text-xs text-muted-foreground">Claimed by</p>
+                <p className="text-xs text-muted-foreground">{soldOut ? "Sold to" : "Claimed by"}</p>
                 <p className="font-bold text-foreground truncate max-w-[140px]">{card.claimed_by}</p>
               </div>
             </div>
@@ -150,7 +151,7 @@ export function CardTile({ card, isMine, onClaim, onUnclaim, disabled, isSaleLiv
               </Button>
             ) : claimed ? (
               <Button size="sm" disabled variant="secondary">
-                Claimed
+                {soldOut ? "Sold" : "Claimed"}
               </Button>
             ) : (
               <Button
