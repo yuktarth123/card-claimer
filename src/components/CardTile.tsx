@@ -16,7 +16,7 @@ interface Props {
   card: Card;
   isMine: boolean;
   onClaim: (card: Card) => void;
-  onUnclaim: (card: Card, toastId?: string | number) => void; // Updated to accept optional toastId as string | number
+  onUnclaim: (card: Card, toastId?: string | number) => void;
   disabled?: boolean;
   isSaleLive: boolean;
 }
@@ -32,7 +32,7 @@ export function CardTile({ card, isMine, onClaim, onUnclaim, disabled, isSaleLiv
   const handleUnclaimOnExpire = () => {
     if (isClaimExpired) {
       const toastId = toast.warning(`Claim expired`, { description: `${card.name} was released.` });
-      onUnclaim(card, toastId); // Pass the toastId to onUnclaim
+      onUnclaim(card, toastId);
     }
   };
 
@@ -56,6 +56,18 @@ export function CardTile({ card, isMine, onClaim, onUnclaim, disabled, isSaleLiv
   };
 
   const currentDisplayMediaUrl = card.video_url || card.photo_url || card.tcg_image_url;
+
+  const originalPrice = Number(card.price);
+  const salePrice = card.sale_price !== null ? Number(card.sale_price) : null;
+  const isOnSale = salePrice !== null && salePrice < originalPrice;
+  const displayPrice = isOnSale ? salePrice : originalPrice;
+
+  const discountPercentage = useMemo(() => {
+    if (isOnSale && originalPrice > 0) {
+      return Math.round(((originalPrice - salePrice!) / originalPrice) * 100);
+    }
+    return 0;
+  }, [originalPrice, salePrice, isOnSale]);
 
   return (
     <>
@@ -105,6 +117,11 @@ export function CardTile({ card, isMine, onClaim, onUnclaim, disabled, isSaleLiv
                 {card.rarity}
               </Badge>
             )}
+            {isOnSale && (
+              <Badge className="bg-accent text-accent-foreground border-0 shadow-md">
+                -{discountPercentage}%
+              </Badge>
+            )}
           </div>
           {claimed && !isMine && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/70 backdrop-blur-sm animate-claim-pop">
@@ -145,9 +162,16 @@ export function CardTile({ card, isMine, onClaim, onUnclaim, disabled, isSaleLiv
             )}
           </div>
           <div className="flex items-center justify-between gap-2">
-            <span className="font-black text-lg text-primary">
-              {CURRENCY}{Number(card.price).toFixed(0)}
-            </span>
+            <div className="flex items-baseline gap-1">
+              {isOnSale && (
+                <span className="text-xs text-muted-foreground line-through">
+                  {CURRENCY}{originalPrice.toFixed(0)}
+                </span>
+              )}
+              <span className="font-black text-lg text-primary">
+                {CURRENCY}{displayPrice.toFixed(0)}
+              </span>
+            </div>
             {isMine ? (
               <Button
                 size="sm"

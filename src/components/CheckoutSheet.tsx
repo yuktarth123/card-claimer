@@ -15,18 +15,26 @@ type Card = Database["public"]["Tables"]["cards"]["Row"];
 interface Props {
   myCards: Card[];
   buyerName: string;
-  onUnclaim: (card: Card) => void;
+  onUnclaim: (card: Card, toastId?: string | number) => void;
   isSaleLive?: boolean;
 }
 
 export function CheckoutSheet({ myCards, buyerName, onUnclaim, isSaleLive = true }: Props) {
   const { sessionId } = useBuyer();
-  const total = myCards.reduce((s, c) => s + Number(c.price), 0);
+  
+  const total = myCards.reduce((s, c) => s + Number(c.sale_price !== null && c.sale_price < c.price ? c.sale_price : c.price), 0);
 
   const message = `Hi ${SELLER_NAME}! I'm ${buyerName}.\n\nI've claimed ${myCards.length} card${myCards.length === 1 ? "" : "s"}:\n${myCards
     .map((c, i) => {
       const imageUrl = c.photo_url || c.tcg_image_url;
-      return `${i + 1}. ${c.name}${c.card_set ? ` (${c.card_set})` : ""} — ${CURRENCY}${Number(c.price).toFixed(0)}${c.condition ? ` (${c.condition})` : ''}${imageUrl ? `\n${imageUrl}` : ''}`;
+      const originalPrice = Number(c.price);
+      const salePrice = c.sale_price !== null ? Number(c.sale_price) : null;
+      const displayPrice = salePrice !== null && salePrice < originalPrice ? salePrice : originalPrice;
+      const priceText = salePrice !== null && salePrice < originalPrice 
+        ? `${CURRENCY}${displayPrice.toFixed(0)} (was ${CURRENCY}${originalPrice.toFixed(0)})`
+        : `${CURRENCY}${displayPrice.toFixed(0)}`;
+
+      return `${i + 1}. ${c.name}${c.card_set ? ` (${c.card_set})` : ""} — ${priceText}${c.condition ? ` (${c.condition})` : ''}${imageUrl ? `\n${imageUrl}` : ''}`;
     })
     .join("\n")}\n\nTotal: ${CURRENCY}${total.toFixed(0)}\n\n${total >= FREE_SHIPPING_THRESHOLD ? "Good news! Your order qualifies for FREE shipping!" : `Add ${CURRENCY}${FREE_SHIPPING_THRESHOLD - total} more for FREE shipping!`}\n\nPlease share payment details. 🙏`;
 
@@ -125,35 +133,47 @@ export function CheckoutSheet({ myCards, buyerName, onUnclaim, isSaleLive = true
               <p>No claims yet. Tap any available card to claim it!</p>
             </div>
           ) : (
-            myCards.map((c) => (
-              <div key={c.id} className="flex items-center gap-3 p-2 rounded-lg bg-muted/40 border border-border">
-                {(c.tcg_image_url || c.photo_url) && (
-                  <img src={c.tcg_image_url || c.photo_url!} alt={c.name} className="w-12 h-16 object-cover rounded" />
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold truncate">{c.name}</p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {c.card_set} {c.condition ? `(${c.condition})` : ''}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-bold text-primary">{CURRENCY}{Number(c.price).toFixed(0)}</p>
-                {c.claimed_at && (
-                      <ClaimCountdown
-                        claimedAt={c.claimed_at}
-                        onExpired={() => {
-                          toast.warning(`Claim expired`, { description: `${c.name} was released.` });
-                          onUnclaim(c);
-                        }}
-                        className="text-[10px] px-1.5 py-0.5"
-                      />
-                    )}
+            myCards.map((c) => {
+              const originalPrice = Number(c.price);
+              const salePrice = c.sale_price !== null ? Number(c.sale_price) : null;
+              const displayPrice = salePrice !== null && salePrice < originalPrice ? salePrice : originalPrice;
+              const isOnSale = salePrice !== null && salePrice < originalPrice;
+
+              return (
+                <div key={c.id} className="flex items-center gap-3 p-2 rounded-lg bg-muted/40 border border-border">
+                  {(c.tcg_image_url || c.photo_url) && (
+                    <img src={c.tcg_image_url || c.photo_url!} alt={c.name} className="w-12 h-16 object-cover rounded" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold truncate">{c.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {c.card_set} {c.condition ? `(${c.condition})` : ''}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      {isOnSale && (
+                        <span className="text-xs text-muted-foreground line-through">
+                          {CURRENCY}{originalPrice.toFixed(0)}
+                        </span>
+                      )}
+                      <p className="text-sm font-bold text-primary">{CURRENCY}{displayPrice.toFixed(0)}</p>
+                      {c.claimed_at && (
+                        <ClaimCountdown
+                          claimedAt={c.claimed_at}
+                          onExpired={() => {
+                            toast.warning(`Claim expired`, { description: `${c.name} was released.` });
+                            onUnclaim(c);
+                          }}
+                          className="text-[10px] px-1.5 py-0.5"
+                        />
+                      )}
+                    </div>
                   </div>
+                  <Button size="icon" variant="ghost" onClick={() => onUnclaim(c)}>
+                    <X className="w-4 h-4" />
+                  </Button>
                 </div>
-                <Button size="icon" variant="ghost" onClick={() => onUnclaim(c)}>
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 

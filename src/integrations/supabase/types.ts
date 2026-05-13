@@ -43,6 +43,7 @@ export type Database = {
           photo_url: string | null
           price: number
           rarity: string | null
+          sale_price: number | null
           status: string
           tcg_image_url: string | null
           video_url: string | null
@@ -60,6 +61,7 @@ export type Database = {
           photo_url?: string | null
           price?: number
           rarity?: string | null
+          sale_price?: number | null
           status?: string
           tcg_image_url?: string | null
           video_url?: string | null
@@ -77,6 +79,7 @@ export type Database = {
           photo_url?: string | null
           price?: number
           rarity?: string | null
+          sale_price?: number | null
           status?: string
           tcg_image_url?: string | null
           video_url?: string | null
@@ -118,6 +121,7 @@ export type Database = {
           photo_url: string | null
           price: number
           rarity: string | null
+          sale_price: number | null
           status: string
           tcg_image_url: string | null
           video_url: string | null
@@ -144,6 +148,7 @@ export type Database = {
           photo_url: string | null
           price: number
           rarity: string | null
+          sale_price: number | null
           status: string
           tcg_image_url: string | null
           video_url: string | null
@@ -170,6 +175,7 @@ export type Database = {
           photo_url: string | null
           price: number
           rarity: string | null
+          sale_price: number | null
           status: string
           tcg_image_url: string | null
           video_url: string | null

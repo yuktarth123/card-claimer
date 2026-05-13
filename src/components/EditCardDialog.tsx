@@ -28,6 +28,7 @@ interface EditCardDialogProps {
 export function EditCardDialog({ card, open, onOpenChange, onSave }: EditCardDialogProps) {
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
+  const [salePrice, setSalePrice] = useState(""); // New state for sale price
   const [condition, setCondition] = useState<string>("Near Mint");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -42,6 +43,7 @@ export function EditCardDialog({ card, open, onOpenChange, onSave }: EditCardDia
     if (card) {
       setName(card.name);
       setPrice(String(card.price));
+      setSalePrice(card.sale_price !== null ? String(card.sale_price) : ""); // Set sale price
       setCondition(card.condition || "Near Mint");
       setPhotoPreview(card.photo_url || card.tcg_image_url || null);
       setVideoPreview(card.video_url || null);
@@ -89,6 +91,14 @@ export function EditCardDialog({ card, open, onOpenChange, onSave }: EditCardDia
       return;
     }
 
+    const parsedPrice = Number(price);
+    const parsedSalePrice = salePrice ? Number(salePrice) : null;
+
+    if (parsedSalePrice !== null && parsedSalePrice > parsedPrice) {
+      toast.error("Sale price cannot be greater than the original price.");
+      return;
+    }
+
     setIsSaving(true);
     let newPhotoUrl = card.photo_url;
     let newVideoUrl = card.video_url;
@@ -129,7 +139,8 @@ export function EditCardDialog({ card, open, onOpenChange, onSave }: EditCardDia
       .from("cards")
       .update({
         name: name.trim(),
-        price: Number(price),
+        price: parsedPrice,
+        sale_price: parsedSalePrice, // Save sale price
         condition: condition,
         photo_url: newPhotoUrl,
         video_url: newVideoUrl,
@@ -180,6 +191,22 @@ export function EditCardDialog({ card, open, onOpenChange, onSave }: EditCardDia
               value={price}
               onChange={(e) => setPrice(e.target.value)}
               className="col-span-3"
+            />
+          </div>
+
+          {/* Sale Price */}
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="sale-price" className="text-right">
+              Sale Price ({CURRENCY})
+            </Label>
+            <Input
+              id="sale-price"
+              type="number"
+              inputMode="decimal"
+              value={salePrice}
+              onChange={(e) => setSalePrice(e.target.value)}
+              className="col-span-3"
+              placeholder="Optional sale price"
             />
           </div>
 

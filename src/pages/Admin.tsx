@@ -20,6 +20,7 @@ const Admin = () => {
   const [cards, setCards] = useState<DbCard[]>([]);
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
+  const [salePrice, setSalePrice] = useState(""); // New state for sale price
   const [condition, setCondition] = useState<string>("Near Mint");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -118,6 +119,7 @@ const Admin = () => {
   const resetForm = () => {
     setName("");
     setPrice("");
+    setSalePrice(""); // Reset sale price
     setCondition("Near Mint");
     setPhotoFile(null);
     setPhotoPreview(null);
@@ -135,6 +137,15 @@ const Admin = () => {
       toast.error("Add a name and price");
       return;
     }
+
+    const parsedPrice = Number(price);
+    const parsedSalePrice = salePrice ? Number(salePrice) : null;
+
+    if (parsedSalePrice !== null && parsedSalePrice > parsedPrice) {
+      toast.error("Sale price cannot be greater than the original price.");
+      return;
+    }
+
     setPublishing(true);
     let photo_url: string | null = null;
     let video_url: string | null = null;
@@ -171,7 +182,8 @@ const Admin = () => {
 
     const { error } = await supabase.from("cards").insert({
       name: name.trim(),
-      price: Number(price),
+      price: parsedPrice,
+      sale_price: parsedSalePrice, // Insert sale price
       condition: condition,
       photo_url,
       video_url,
@@ -426,6 +438,10 @@ const Admin = () => {
               <div className="col-span-2">
                 <Label>Price ({CURRENCY})</Label>
                 <Input type="number" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="500" />
+              </div>
+              <div className="col-span-2">
+                <Label>Sale Price ({CURRENCY})</Label>
+                <Input type="number" inputMode="decimal" value={salePrice} onChange={(e) => setSalePrice(e.target.value)} placeholder="Optional sale price" />
               </div>
               <div className="col-span-2">
                 <Label htmlFor="condition">Condition</Label>
