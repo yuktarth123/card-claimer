@@ -102,7 +102,7 @@ const Leaderboard = () => {
                 <img
                   src={prize.prize_rank_1_image_url}
                   alt="Monthly top trainer prize"
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
                   loading="lazy"
                 />
               </div>
