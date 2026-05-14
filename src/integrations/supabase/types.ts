@@ -17,14 +17,32 @@ export type Database = {
       app_settings: {
         Row: {
           id: number
+          prize_rank_1_image_url: string | null
+          prize_rank_1_text: string | null
+          prize_rank_2_image_url: string | null
+          prize_rank_2_text: string | null
+          prize_rank_3_image_url: string | null
+          prize_rank_3_text: string | null
           sale_start_time: string | null
         }
         Insert: {
           id?: number
+          prize_rank_1_image_url?: string | null
+          prize_rank_1_text?: string | null
+          prize_rank_2_image_url?: string | null
+          prize_rank_2_text?: string | null
+          prize_rank_3_image_url?: string | null
+          prize_rank_3_text?: string | null
           sale_start_time?: string | null
         }
         Update: {
           id?: number
+          prize_rank_1_image_url?: string | null
+          prize_rank_1_text?: string | null
+          prize_rank_2_image_url?: string | null
+          prize_rank_2_text?: string | null
+          prize_rank_3_image_url?: string | null
+          prize_rank_3_text?: string | null
           sale_start_time?: string | null
         }
         Relationships: []
@@ -101,6 +119,44 @@ export type Database = {
         }
         Relationships: []
       }
+      transactions: {
+        Row: {
+          buyer_name: string
+          buyer_session_id: string | null
+          card_name: string
+          final_price: number
+          id: string
+          original_card_id: string | null
+          transaction_date: string
+        }
+        Insert: {
+          buyer_name: string
+          buyer_session_id?: string | null
+          card_name: string
+          final_price: number
+          id?: string
+          original_card_id?: string | null
+          transaction_date?: string
+        }
+        Update: {
+          buyer_name?: string
+          buyer_session_id?: string | null
+          card_name?: string
+          final_price?: number
+          id?: string
+          original_card_id?: string | null
+          transaction_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_original_card_id_fkey"
+            columns: ["original_card_id"]
+            isOneToOne: false
+            referencedRelation: "cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -158,6 +214,33 @@ export type Database = {
           to: "cards"
           isOneToOne: false
           isSetofReturn: true
+        }
+      }
+      mark_card_as_sold: {
+        Args: { _buyer_name: string; _card_id: string; _final_price: number }
+        Returns: {
+          buyer_session_id: string | null
+          card_number: string | null
+          card_set: string | null
+          claimed_at: string | null
+          claimed_by: string | null
+          condition: string | null
+          created_at: string
+          id: string
+          name: string
+          photo_url: string | null
+          price: number
+          rarity: string | null
+          sale_price: number | null
+          status: string
+          tcg_image_url: string | null
+          video_url: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "cards"
+          isOneToOne: true
+          isSetofReturn: false
         }
       }
       unclaim_card: {
