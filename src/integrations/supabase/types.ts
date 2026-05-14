@@ -262,7 +262,6 @@ export type Database = {
         Args: never
         Returns: {
           buyer_name: string
-          buyer_phone: string
           purchases: number
           xp: number
         }[]
