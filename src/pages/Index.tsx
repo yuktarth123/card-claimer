@@ -6,8 +6,9 @@ import { NameGate } from "@/components/NameGate";
 import { CheckoutSheet } from "@/components/CheckoutSheet";
 import { useBuyer } from "@/hooks/useBuyer";
 import { toast } from "sonner";
-import { Zap } from "lucide-react";
+import { Zap, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 import CountdownTimer from "@/components/CountdownTimer";
 import { CURRENCY, SELLER_NAME } from "@/config";
 import AppLogo from "@/components/AppLogo";
@@ -26,7 +27,7 @@ type Filter = "all" | "available" | "mine";
 type SortOrder = "none" | "price-asc" | "price-desc";
 
 const Index = () => {
-  const { name, sessionId, setName } = useBuyer();
+  const { name, phone, sessionId, setName, setIdentity } = useBuyer();
   const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("all");
@@ -168,6 +169,7 @@ const Index = () => {
       _card_id: card.id,
       _buyer_name: name,
       _session_id: sessionId,
+      _buyer_phone: phone || null,
     });
     if (error) {
       if (typeof navigator !== "undefined" && "vibrate" in navigator) {
@@ -203,8 +205,8 @@ const Index = () => {
     <div className="min-h-screen pb-28">
       <NameGate
         open={!name && isSaleLive}
-        onSubmit={(n) => {
-          setName(n);
+        onSubmit={(n, p) => {
+          setIdentity(n, p);
           toast.success(`Welcome, ${n}! 👋`, {
             description: isSaleLive ? "The sale is live — start claiming!" : "Get ready, the sale starts soon.",
           });
@@ -223,6 +225,12 @@ const Index = () => {
             <span className="font-bold tracking-wide text-sm uppercase text-muted-foreground">
               {SELLER_NAME}
             </span>
+            <Link
+              to="/leaderboard"
+              className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/15 border border-primary/30 text-sm font-semibold text-primary hover:bg-primary/25 transition"
+            >
+              <Trophy className="w-4 h-4" /> Leaderboard
+            </Link>
           </div>
           <h1 className="text-3xl md:text-5xl font-black text-balance">
             Pokémon Cards <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Live Sale</span>
