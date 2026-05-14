@@ -638,3 +638,121 @@ const Admin = () => {
 };
 
 export default Admin;
+
+function PrizeEditor() {
+  const [text, setText] = useState("");
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("app_settings")
+        .select("prize_rank_1_text, prize_rank_1_image_url")
+        .eq("id", 1)
+        .maybeSingle();
+      if (data) {
+        setText(data.prize_rank_1_text ?? "");
+        setImageUrl(data.prize_rank_1_image_url ?? null);
+      }
+    })();
+  }, []);
+
+  const handleUpload = async (file: File | null) => {
+    if (!file) return;
+    setUploading(true);
+    const path = `prize-${Date.now()}-${Math.random().toString(36).slice(2)}.${file.name.split(".").pop() || "jpg"}`;
+    const { error: upErr } = await supabase.storage.from("prize-images").upload(path, file, {
+      cacheControl: "3600",
+      upsert: false,
+    });
+    if (upErr) {
+      toast.error("Image upload failed");
+      setUploading(false);
+      return;
+    }
+    const { data } = supabase.storage.from("prize-images").getPublicUrl(path);
+    setImageUrl(data.publicUrl);
+    setUploading(false);
+    toast.success("Image uploaded");
+  };
+
+  const save = async () => {
+    setSaving(true);
+    const { error } = await supabase
+      .from("app_settings")
+      .upsert({ id: 1, prize_rank_1_text: text, prize_rank_1_image_url: imageUrl }, { onConflict: "id" });
+    setSaving(false);
+    if (error) {
+      console.error(error);
+      toast.error("Failed to save prize");
+    } else {
+      toast.success("Prize updated!");
+    }
+  };
+
+  return (
+    <Card className="gradient-card-bg border-border lg:col-span-2">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Trophy className="w-5 h-5 text-primary" /> Monthly Leaderboard Prize
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Prize Description</Label>
+            <Textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="e.g. Surprise booster box + exclusive promo card for the top spending trainer of the month!"
+              rows={5}
+              maxLength={500}
+            />
+            <p className="text-xs text-muted-foreground">Shown publicly on /leaderboard.</p>
+          </div>
+          <div className="space-y-2">
+            <Label>Prize Image</Label>
+            {imageUrl ? (
+              <div className="relative aspect-video w-full rounded-lg overflow-hidden border border-border">
+                <img src={imageUrl} alt="Prize" className="w-full h-full object-cover" />
+                <Button
+                  size="icon"
+                  variant="destructive"
+                  className="absolute top-2 right-2 h-7 w-7"
+                  onClick={() => setImageUrl(null)}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+                className="w-full"
+              >
+                {uploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Gift className="w-4 h-4 mr-2" />}
+                Upload prize image
+              </Button>
+            )}
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => handleUpload(e.target.files?.[0] || null)}
+            />
+          </div>
+        </div>
+        <Button onClick={save} disabled={saving} className="gradient-gold text-primary-foreground font-bold">
+          {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+          Save Prize
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
