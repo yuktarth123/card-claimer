@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Trophy, Crown, Medal, Award, Zap, ChevronLeft, Gift } from "lucide-react";
 import AppLogo from "@/components/AppLogo";
 import { CURRENCY, SELLER_NAME } from "@/config";
+import MediaCarouselDialog from "@/components/MediaCarouselDialog"; // Import MediaCarouselDialog
 
 type Row = { buyer_name: string; xp: number; purchases: number };
 type Prize = {
@@ -26,6 +27,7 @@ const Leaderboard = () => {
   const [rows, setRows] = useState<Row[]>([]);
   const [prize, setPrize] = useState<Prize | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isPrizeImageCarouselOpen, setIsPrizeImageCarouselOpen] = useState(false); // State for carousel
 
   useEffect(() => {
     let mounted = true;
@@ -98,7 +100,10 @@ const Leaderboard = () => {
           </CardHeader>
           <CardContent className="space-y-3">
             {prize?.prize_rank_1_image_url ? (
-              <div className="aspect-video w-full rounded-lg overflow-hidden border border-border bg-muted">
+              <div
+                className="aspect-video w-full rounded-lg overflow-hidden border border-border bg-muted cursor-pointer"
+                onClick={() => setIsPrizeImageCarouselOpen(true)} // Open carousel on click
+              >
                 <img
                   src={prize.prize_rank_1_image_url}
                   alt="Monthly top trainer prize"
@@ -180,6 +185,15 @@ const Leaderboard = () => {
           </CardContent>
         </Card>
       </main>
+
+      {prize?.prize_rank_1_image_url && (
+        <MediaCarouselDialog
+          open={isPrizeImageCarouselOpen}
+          onOpenChange={setIsPrizeImageCarouselOpen}
+          mediaUrls={[prize.prize_rank_1_image_url]}
+          initialIndex={0}
+        />
+      )}
     </div>
   );
 };
