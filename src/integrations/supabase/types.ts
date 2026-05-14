@@ -49,6 +49,7 @@ export type Database = {
       }
       cards: {
         Row: {
+          buyer_phone: string | null
           buyer_session_id: string | null
           card_number: string | null
           card_set: string | null
@@ -67,6 +68,7 @@ export type Database = {
           video_url: string | null
         }
         Insert: {
+          buyer_phone?: string | null
           buyer_session_id?: string | null
           card_number?: string | null
           card_set?: string | null
@@ -85,6 +87,7 @@ export type Database = {
           video_url?: string | null
         }
         Update: {
+          buyer_phone?: string | null
           buyer_session_id?: string | null
           card_number?: string | null
           card_set?: string | null
@@ -122,6 +125,7 @@ export type Database = {
       transactions: {
         Row: {
           buyer_name: string
+          buyer_phone: string | null
           buyer_session_id: string | null
           card_name: string
           final_price: number
@@ -131,6 +135,7 @@ export type Database = {
         }
         Insert: {
           buyer_name: string
+          buyer_phone?: string | null
           buyer_session_id?: string | null
           card_name: string
           final_price: number
@@ -140,6 +145,7 @@ export type Database = {
         }
         Update: {
           buyer_name?: string
+          buyer_phone?: string | null
           buyer_session_id?: string | null
           card_name?: string
           final_price?: number
@@ -162,36 +168,72 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      claim_card: {
-        Args: { _buyer_name: string; _card_id: string; _session_id: string }
-        Returns: {
-          buyer_session_id: string | null
-          card_number: string | null
-          card_set: string | null
-          claimed_at: string | null
-          claimed_by: string | null
-          condition: string | null
-          created_at: string
-          id: string
-          name: string
-          photo_url: string | null
-          price: number
-          rarity: string | null
-          sale_price: number | null
-          status: string
-          tcg_image_url: string | null
-          video_url: string | null
-        }
-        SetofOptions: {
-          from: "*"
-          to: "cards"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
+      claim_card:
+        | {
+            Args: { _buyer_name: string; _card_id: string; _session_id: string }
+            Returns: {
+              buyer_phone: string | null
+              buyer_session_id: string | null
+              card_number: string | null
+              card_set: string | null
+              claimed_at: string | null
+              claimed_by: string | null
+              condition: string | null
+              created_at: string
+              id: string
+              name: string
+              photo_url: string | null
+              price: number
+              rarity: string | null
+              sale_price: number | null
+              status: string
+              tcg_image_url: string | null
+              video_url: string | null
+            }
+            SetofOptions: {
+              from: "*"
+              to: "cards"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: {
+              _buyer_name: string
+              _buyer_phone?: string
+              _card_id: string
+              _session_id: string
+            }
+            Returns: {
+              buyer_phone: string | null
+              buyer_session_id: string | null
+              card_number: string | null
+              card_set: string | null
+              claimed_at: string | null
+              claimed_by: string | null
+              condition: string | null
+              created_at: string
+              id: string
+              name: string
+              photo_url: string | null
+              price: number
+              rarity: string | null
+              sale_price: number | null
+              status: string
+              tcg_image_url: string | null
+              video_url: string | null
+            }
+            SetofOptions: {
+              from: "*"
+              to: "cards"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
       finalize_claims: {
         Args: { _session_id: string }
         Returns: {
+          buyer_phone: string | null
           buyer_session_id: string | null
           card_number: string | null
           card_set: string | null
@@ -216,36 +258,85 @@ export type Database = {
           isSetofReturn: true
         }
       }
-      mark_card_as_sold: {
-        Args: { _buyer_name: string; _card_id: string; _final_price: number }
+      get_monthly_leaderboard: {
+        Args: never
         Returns: {
-          buyer_session_id: string | null
-          card_number: string | null
-          card_set: string | null
-          claimed_at: string | null
-          claimed_by: string | null
-          condition: string | null
-          created_at: string
-          id: string
-          name: string
-          photo_url: string | null
-          price: number
-          rarity: string | null
-          sale_price: number | null
-          status: string
-          tcg_image_url: string | null
-          video_url: string | null
-        }
-        SetofOptions: {
-          from: "*"
-          to: "cards"
-          isOneToOne: true
-          isSetofReturn: false
-        }
+          buyer_name: string
+          buyer_phone: string
+          purchases: number
+          xp: number
+        }[]
       }
+      mark_card_as_sold:
+        | {
+            Args: {
+              _buyer_name: string
+              _card_id: string
+              _final_price: number
+            }
+            Returns: {
+              buyer_phone: string | null
+              buyer_session_id: string | null
+              card_number: string | null
+              card_set: string | null
+              claimed_at: string | null
+              claimed_by: string | null
+              condition: string | null
+              created_at: string
+              id: string
+              name: string
+              photo_url: string | null
+              price: number
+              rarity: string | null
+              sale_price: number | null
+              status: string
+              tcg_image_url: string | null
+              video_url: string | null
+            }
+            SetofOptions: {
+              from: "*"
+              to: "cards"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: {
+              _buyer_name: string
+              _buyer_phone?: string
+              _card_id: string
+              _final_price: number
+            }
+            Returns: {
+              buyer_phone: string | null
+              buyer_session_id: string | null
+              card_number: string | null
+              card_set: string | null
+              claimed_at: string | null
+              claimed_by: string | null
+              condition: string | null
+              created_at: string
+              id: string
+              name: string
+              photo_url: string | null
+              price: number
+              rarity: string | null
+              sale_price: number | null
+              status: string
+              tcg_image_url: string | null
+              video_url: string | null
+            }
+            SetofOptions: {
+              from: "*"
+              to: "cards"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
       unclaim_card: {
         Args: { _card_id: string; _session_id: string }
         Returns: {
+          buyer_phone: string | null
           buyer_session_id: string | null
           card_number: string | null
           card_set: string | null
