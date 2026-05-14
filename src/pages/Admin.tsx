@@ -7,12 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Camera, Upload, Search, Trash2, Plus, X, Loader2, Lock, Clock, Edit, Video, Wrench, Filter, ArrowDownWideNarrow, ArrowUpWideNarrow } from "lucide-react"; // Added Filter, ArrowDownWideNarrow, ArrowUpWideNarrow icons
+import { Camera, Upload, Search, Trash2, Plus, X, Loader2, Lock, Clock, Edit, Video, Wrench, Filter, ArrowDownWideNarrow, ArrowUpWideNarrow, CheckCircle2, Gift, Trophy } from "lucide-react";
 import { CURRENCY, USD_TO_INR_RATE, SELLER_NAME } from "@/config";
 import { SaleTimeManager } from "@/components/SaleTimeManager";
 import AppLogo from "@/components/AppLogo";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EditCardDialog } from "@/components/EditCardDialog";
+import { Textarea } from "@/components/ui/textarea";
 
 type DbCard = Database["public"]["Tables"]["cards"]["Row"];
 type PriceFilter = "all" | "under-100" | "100-500" | "500-1000" | "1000-plus";
@@ -252,6 +253,33 @@ const Admin = () => {
     }
   };
 
+  const handleMarkAsSold = async (card: DbCard) => {
+    const buyerName = card.claimed_by?.trim();
+    if (!buyerName) {
+      toast.error("This card has no claimed trainer. Unclaim and re-claim it first, or edit it.");
+      return;
+    }
+    const finalPrice =
+      card.sale_price !== null && Number(card.sale_price) < Number(card.price)
+        ? Number(card.sale_price)
+        : Number(card.price);
+
+    if (!confirm(`Mark "${card.name}" as SOLD to ${buyerName} for ${CURRENCY}${finalPrice.toFixed(0)}?\n\nThis records the transaction and awards XP on the leaderboard.`)) return;
+
+    const { error } = await supabase.rpc("mark_card_as_sold", {
+      _card_id: card.id,
+      _buyer_name: buyerName,
+      _final_price: finalPrice,
+      _buyer_phone: card.buyer_phone ?? null,
+    });
+    if (error) {
+      console.error(error);
+      toast.error("Failed to mark as sold");
+    } else {
+      toast.success(`Sold ${card.name} to ${buyerName}!`);
+    }
+  };
+
   const handleEditClick = (card: DbCard) => {
     setEditingCard(card);
     setIsEditDialogOpen(true);
@@ -289,7 +317,10 @@ const Admin = () => {
               <p className="text-xs text-muted-foreground">Quick-list cards for the live drop</p>
             </div>
           </div>
-          <a href="/" className="text-sm text-muted-foreground underline">View sale →</a>
+          <div className="flex items-center gap-3 text-sm">
+            <a href="/leaderboard" className="text-muted-foreground hover:text-foreground underline">Leaderboard</a>
+            <a href="/" className="text-muted-foreground underline">View sale →</a>
+          </div>
         </div>
       </header>
 
@@ -331,6 +362,8 @@ const Admin = () => {
             </div>
           </CardContent>
         </Card>
+
+        <PrizeEditor />
 
         {/* Quick list form */}
         <Card className="gradient-card-bg border-border">
@@ -574,6 +607,11 @@ const Admin = () => {
                     {(c.status === "claimed" || c.status === "checked_out") && (
                       <Button size="icon" variant="ghost" onClick={() => handleAdminUnclaim(c.id)}>
                         <Lock className="w-4 h-4 text-primary" />
+                      </Button>
+                    )}
+                    {c.status === "claimed" && (
+                      <Button size="icon" variant="ghost" onClick={() => handleMarkAsSold(c)} title="Mark as sold">
+                        <CheckCircle2 className="w-4 h-4 text-success" />
                       </Button>
                     )}
                     <Button size="icon" variant="ghost" onClick={() => remove(c.id)}>
