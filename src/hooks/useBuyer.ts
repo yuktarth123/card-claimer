@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 const NAME_KEY = "tcg_buyer_name";
+const PHONE_KEY = "tcg_buyer_phone";
 const SESSION_KEY = "tcg_buyer_session";
 
 function uuid() {
@@ -10,16 +11,19 @@ function uuid() {
 
 export function useBuyer() {
   const [name, setNameState] = useState<string>("");
+  const [phone, setPhoneState] = useState<string>("");
   const [sessionId, setSessionId] = useState<string>("");
 
   useEffect(() => {
     const storedName = localStorage.getItem(NAME_KEY) || "";
+    const storedPhone = localStorage.getItem(PHONE_KEY) || "";
     let storedSession = localStorage.getItem(SESSION_KEY);
     if (!storedSession) {
       storedSession = uuid();
       localStorage.setItem(SESSION_KEY, storedSession);
     }
     setNameState(storedName);
+    setPhoneState(storedPhone);
     setSessionId(storedSession);
   }, []);
 
@@ -29,5 +33,16 @@ export function useBuyer() {
     localStorage.setItem(NAME_KEY, trimmed);
   };
 
-  return { name, sessionId, setName };
+  const setPhone = (p: string) => {
+    const trimmed = p.trim();
+    setPhoneState(trimmed);
+    localStorage.setItem(PHONE_KEY, trimmed);
+  };
+
+  const setIdentity = (n: string, p: string) => {
+    setName(n);
+    setPhone(p);
+  };
+
+  return { name, phone, sessionId, setName, setPhone, setIdentity };
 }

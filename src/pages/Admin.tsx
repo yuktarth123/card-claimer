@@ -7,12 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Camera, Upload, Search, Trash2, Plus, X, Loader2, Lock, Clock, Edit, Video, Wrench, Filter, ArrowDownWideNarrow, ArrowUpWideNarrow } from "lucide-react"; // Added Filter, ArrowDownWideNarrow, ArrowUpWideNarrow icons
+import { Camera, Upload, Search, Trash2, Plus, X, Loader2, Lock, Clock, Edit, Video, Wrench, Filter, ArrowDownWideNarrow, ArrowUpWideNarrow, CheckCircle2, Gift, Trophy } from "lucide-react";
 import { CURRENCY, USD_TO_INR_RATE, SELLER_NAME } from "@/config";
 import { SaleTimeManager } from "@/components/SaleTimeManager";
 import AppLogo from "@/components/AppLogo";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EditCardDialog } from "@/components/EditCardDialog";
+import { Textarea } from "@/components/ui/textarea";
 
 type DbCard = Database["public"]["Tables"]["cards"]["Row"];
 type PriceFilter = "all" | "under-100" | "100-500" | "500-1000" | "1000-plus";
@@ -252,6 +253,33 @@ const Admin = () => {
     }
   };
 
+  const handleMarkAsSold = async (card: DbCard) => {
+    const buyerName = card.claimed_by?.trim();
+    if (!buyerName) {
+      toast.error("This card has no claimed trainer. Unclaim and re-claim it first, or edit it.");
+      return;
+    }
+    const finalPrice =
+      card.sale_price !== null && Number(card.sale_price) < Number(card.price)
+        ? Number(card.sale_price)
+        : Number(card.price);
+
+    if (!confirm(`Mark "${card.name}" as SOLD to ${buyerName} for ${CURRENCY}${finalPrice.toFixed(0)}?\n\nThis records the transaction and awards XP on the leaderboard.`)) return;
+
+    const { error } = await supabase.rpc("mark_card_as_sold", {
+      _card_id: card.id,
+      _buyer_name: buyerName,
+      _final_price: finalPrice,
+      _buyer_phone: card.buyer_phone ?? null,
+    });
+    if (error) {
+      console.error(error);
+      toast.error("Failed to mark as sold");
+    } else {
+      toast.success(`Sold ${card.name} to ${buyerName}!`);
+    }
+  };
+
   const handleEditClick = (card: DbCard) => {
     setEditingCard(card);
     setIsEditDialogOpen(true);
@@ -289,7 +317,10 @@ const Admin = () => {
               <p className="text-xs text-muted-foreground">Quick-list cards for the live drop</p>
             </div>
           </div>
-          <a href="/" className="text-sm text-muted-foreground underline">View sale →</a>
+          <div className="flex items-center gap-3 text-sm">
+            <a href="/leaderboard" className="text-muted-foreground hover:text-foreground underline">Leaderboard</a>
+            <a href="/" className="text-muted-foreground underline">View sale →</a>
+          </div>
         </div>
       </header>
 
@@ -331,6 +362,8 @@ const Admin = () => {
             </div>
           </CardContent>
         </Card>
+
+        <PrizeEditor />
 
         {/* Quick list form */}
         <Card className="gradient-card-bg border-border">
@@ -576,6 +609,11 @@ const Admin = () => {
                         <Lock className="w-4 h-4 text-primary" />
                       </Button>
                     )}
+                    {c.status === "claimed" && (
+                      <Button size="icon" variant="ghost" onClick={() => handleMarkAsSold(c)} title="Mark as sold">
+                        <CheckCircle2 className="w-4 h-4 text-success" />
+                      </Button>
+                    )}
                     <Button size="icon" variant="ghost" onClick={() => remove(c.id)}>
                       <Trash2 className="w-4 h-4 text-destructive" />
                     </Button>
@@ -600,3 +638,121 @@ const Admin = () => {
 };
 
 export default Admin;
+
+function PrizeEditor() {
+  const [text, setText] = useState("");
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("app_settings")
+        .select("prize_rank_1_text, prize_rank_1_image_url")
+        .eq("id", 1)
+        .maybeSingle();
+      if (data) {
+        setText(data.prize_rank_1_text ?? "");
+        setImageUrl(data.prize_rank_1_image_url ?? null);
+      }
+    })();
+  }, []);
+
+  const handleUpload = async (file: File | null) => {
+    if (!file) return;
+    setUploading(true);
+    const path = `prize-${Date.now()}-${Math.random().toString(36).slice(2)}.${file.name.split(".").pop() || "jpg"}`;
+    const { error: upErr } = await supabase.storage.from("prize-images").upload(path, file, {
+      cacheControl: "3600",
+      upsert: false,
+    });
+    if (upErr) {
+      toast.error("Image upload failed");
+      setUploading(false);
+      return;
+    }
+    const { data } = supabase.storage.from("prize-images").getPublicUrl(path);
+    setImageUrl(data.publicUrl);
+    setUploading(false);
+    toast.success("Image uploaded");
+  };
+
+  const save = async () => {
+    setSaving(true);
+    const { error } = await supabase
+      .from("app_settings")
+      .upsert({ id: 1, prize_rank_1_text: text, prize_rank_1_image_url: imageUrl }, { onConflict: "id" });
+    setSaving(false);
+    if (error) {
+      console.error(error);
+      toast.error("Failed to save prize");
+    } else {
+      toast.success("Prize updated!");
+    }
+  };
+
+  return (
+    <Card className="gradient-card-bg border-border lg:col-span-2">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Trophy className="w-5 h-5 text-primary" /> Monthly Leaderboard Prize
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Prize Description</Label>
+            <Textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="e.g. Surprise booster box + exclusive promo card for the top spending trainer of the month!"
+              rows={5}
+              maxLength={500}
+            />
+            <p className="text-xs text-muted-foreground">Shown publicly on /leaderboard.</p>
+          </div>
+          <div className="space-y-2">
+            <Label>Prize Image</Label>
+            {imageUrl ? (
+              <div className="relative aspect-video w-full rounded-lg overflow-hidden border border-border">
+                <img src={imageUrl} alt="Prize" className="w-full h-full object-cover" />
+                <Button
+                  size="icon"
+                  variant="destructive"
+                  className="absolute top-2 right-2 h-7 w-7"
+                  onClick={() => setImageUrl(null)}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+                className="w-full"
+              >
+                {uploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Gift className="w-4 h-4 mr-2" />}
+                Upload prize image
+              </Button>
+            )}
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => handleUpload(e.target.files?.[0] || null)}
+            />
+          </div>
+        </div>
+        <Button onClick={save} disabled={saving} className="gradient-gold text-primary-foreground font-bold">
+          {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+          Save Prize
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
