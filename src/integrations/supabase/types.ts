@@ -107,6 +107,30 @@ export type Database = {
         }
         Relationships: []
       }
+      sales: {
+        Row: {
+          created_at: string
+          ended_at: string | null
+          id: string
+          name: string
+          started_at: string
+        }
+        Insert: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          name: string
+          started_at?: string
+        }
+        Update: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          name?: string
+          started_at?: string
+        }
+        Relationships: []
+      }
       settings: {
         Row: {
           id: number
@@ -131,6 +155,7 @@ export type Database = {
           final_price: number
           id: string
           original_card_id: string | null
+          sale_id: string | null
           transaction_date: string
         }
         Insert: {
@@ -141,6 +166,7 @@ export type Database = {
           final_price: number
           id?: string
           original_card_id?: string | null
+          sale_id?: string | null
           transaction_date?: string
         }
         Update: {
@@ -151,6 +177,7 @@ export type Database = {
           final_price?: number
           id?: string
           original_card_id?: string | null
+          sale_id?: string | null
           transaction_date?: string
         }
         Relationships: [
@@ -159,6 +186,13 @@ export type Database = {
             columns: ["original_card_id"]
             isOneToOne: false
             referencedRelation: "cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
             referencedColumns: ["id"]
           },
         ]
@@ -230,6 +264,22 @@ export type Database = {
               isSetofReturn: false
             }
           }
+      end_active_sale: {
+        Args: never
+        Returns: {
+          created_at: string
+          ended_at: string | null
+          id: string
+          name: string
+          started_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "sales"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       finalize_claims: {
         Args: { _session_id: string }
         Returns: {
@@ -258,12 +308,32 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_active_sale_id: { Args: never; Returns: string }
       get_monthly_leaderboard: {
         Args: never
         Returns: {
           buyer_name: string
           purchases: number
           xp: number
+        }[]
+      }
+      get_sale_leaderboard: {
+        Args: { _sale_id: string }
+        Returns: {
+          buyer_name: string
+          purchases: number
+          xp: number
+        }[]
+      }
+      list_sales: {
+        Args: never
+        Returns: {
+          ended_at: string
+          id: string
+          name: string
+          started_at: string
+          total_xp: number
+          transaction_count: number
         }[]
       }
       mark_card_as_sold:
@@ -332,6 +402,22 @@ export type Database = {
               isSetofReturn: false
             }
           }
+      start_sale: {
+        Args: { _name: string }
+        Returns: {
+          created_at: string
+          ended_at: string | null
+          id: string
+          name: string
+          started_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "sales"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       unclaim_card: {
         Args: { _card_id: string; _session_id: string }
         Returns: {

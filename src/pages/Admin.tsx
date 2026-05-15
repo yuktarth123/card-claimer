@@ -14,6 +14,7 @@ import AppLogo from "@/components/AppLogo";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EditCardDialog } from "@/components/EditCardDialog";
 import { Textarea } from "@/components/ui/textarea";
+import { SaleManager } from "@/components/SaleManager";
 
 type DbCard = Database["public"]["Tables"]["cards"]["Row"];
 type PriceFilter = "all" | "under-100" | "100-500" | "500-1000" | "1000-plus";
@@ -364,6 +365,8 @@ const Admin = () => {
         </Card>
 
         <PrizeEditor />
+
+        <SaleManager />
 
         {/* Quick list form */}
         <Card className="gradient-card-bg border-border">

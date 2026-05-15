@@ -1,20 +1,36 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Trophy, Crown, Medal, Award, Zap, ChevronLeft, Gift } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import AppLogo from "@/components/AppLogo";
 import { CURRENCY, SELLER_NAME } from "@/config";
-import MediaCarouselDialog from "@/components/MediaCarouselDialog"; // Import MediaCarouselDialog
+import MediaCarouselDialog from "@/components/MediaCarouselDialog";
 
 type Row = { buyer_name: string; xp: number; purchases: number };
 type Prize = {
   prize_rank_1_text: string | null;
   prize_rank_1_image_url: string | null;
 };
+type SaleRow = {
+  id: string;
+  name: string;
+  started_at: string;
+  ended_at: string | null;
+  transaction_count: number;
+  total_xp: number;
+};
 
 const monthLabel = new Date().toLocaleString(undefined, { month: "long", year: "numeric" });
+const MONTHLY = "__monthly__";
 
 const rankIcon = (rank: number) => {
   if (rank === 1) return <Crown className="w-5 h-5 text-primary" />;
@@ -24,37 +40,73 @@ const rankIcon = (rank: number) => {
 };
 
 const Leaderboard = () => {
+  const [sales, setSales] = useState<SaleRow[]>([]);
+  const [view, setView] = useState<string>(""); // sale id or MONTHLY
   const [rows, setRows] = useState<Row[]>([]);
   const [prize, setPrize] = useState<Prize | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isPrizeImageCarouselOpen, setIsPrizeImageCarouselOpen] = useState(false); // State for carousel
+  const [rowsLoading, setRowsLoading] = useState(true);
+  const [isPrizeImageCarouselOpen, setIsPrizeImageCarouselOpen] = useState(false);
 
+  // Bootstrap: load sales + prize, pick default view
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const [{ data: lbData, error: lbErr }, { data: settingsData }] = await Promise.all([
-        supabase.rpc("get_monthly_leaderboard"),
+      const [{ data: salesData }, { data: settingsData }] = await Promise.all([
+        supabase.rpc("list_sales"),
         supabase
           .from("app_settings")
           .select("prize_rank_1_text, prize_rank_1_image_url")
           .eq("id", 1)
           .maybeSingle(),
       ]);
-      if (lbErr) console.error(lbErr);
+      if (!mounted) return;
+      const list = ((salesData ?? []) as any[]).map((r) => ({
+        ...r,
+        transaction_count: Number(r.transaction_count),
+        total_xp: Number(r.total_xp),
+      })) as SaleRow[];
+      setSales(list);
+      setPrize((settingsData as Prize | null) ?? null);
+
+      // Default: active sale → most recent past sale → monthly
+      const active = list.find((s) => !s.ended_at);
+      const fallback = list[0];
+      setView(active?.id ?? fallback?.id ?? MONTHLY);
+      setLoading(false);
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Load rows whenever view changes
+  useEffect(() => {
+    if (!view) return;
+    let mounted = true;
+    setRowsLoading(true);
+    (async () => {
+      const { data, error } =
+        view === MONTHLY
+          ? await supabase.rpc("get_monthly_leaderboard")
+          : await supabase.rpc("get_sale_leaderboard", { _sale_id: view });
+      if (error) console.error(error);
       if (mounted) {
-        setRows((lbData as Row[] | null) ?? []);
-        setPrize((settingsData as Prize | null) ?? null);
-        setLoading(false);
+        setRows((data as Row[] | null) ?? []);
+        setRowsLoading(false);
       }
     })();
 
     const ch = supabase
-      .channel("leaderboard-tx")
+      .channel(`leaderboard-tx-${view}`)
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "transactions" },
         async () => {
-          const { data } = await supabase.rpc("get_monthly_leaderboard");
+          const { data } =
+            view === MONTHLY
+              ? await supabase.rpc("get_monthly_leaderboard")
+              : await supabase.rpc("get_sale_leaderboard", { _sale_id: view });
           if (mounted) setRows((data as Row[] | null) ?? []);
         }
       )
@@ -64,28 +116,61 @@ const Leaderboard = () => {
       mounted = false;
       supabase.removeChannel(ch);
     };
-  }, []);
+  }, [view]);
 
   const top = rows[0];
+  const activeSale = sales.find((s) => !s.ended_at) ?? null;
+
+  const subtitle = useMemo(() => {
+    if (view === MONTHLY) return `${monthLabel} · monthly`;
+    const s = sales.find((x) => x.id === view);
+    if (!s) return "";
+    return s.ended_at ? `${s.name} · ended ${new Date(s.ended_at).toLocaleDateString()}` : `${s.name} · live now`;
+  }, [view, sales]);
 
   return (
     <div className="min-h-screen pb-12">
       <header className="relative overflow-hidden border-b border-border">
         <div className="absolute inset-0 gradient-hero opacity-30" />
         <div className="relative container py-6 md:py-10">
-          <Link to="/" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-3">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-3"
+          >
             <ChevronLeft className="w-4 h-4" /> Back to sale
           </Link>
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex flex-wrap items-center gap-3 mb-2">
             <div className="w-12 h-12 rounded-xl gradient-gold flex items-center justify-center shadow-glow">
               <Trophy className="w-6 h-6 text-primary-foreground" />
             </div>
-            <div>
+            <div className="flex-1 min-w-0">
               <h1 className="text-2xl md:text-4xl font-black">Trainer Leaderboard</h1>
-              <p className="text-sm text-muted-foreground">
-                {SELLER_NAME} • {monthLabel} • 1 XP per {CURRENCY}1 spent
+              <p className="text-sm text-muted-foreground truncate">
+                {SELLER_NAME} • {subtitle || "loading…"} • 1 XP per {CURRENCY}1 spent
               </p>
             </div>
+            {!loading && (
+              <Select value={view} onValueChange={setView}>
+                <SelectTrigger className="w-[220px]">
+                  <SelectValue placeholder="Choose leaderboard" />
+                </SelectTrigger>
+                <SelectContent>
+                  {activeSale && (
+                    <SelectItem value={activeSale.id}>
+                      🔴 {activeSale.name} (live)
+                    </SelectItem>
+                  )}
+                  <SelectItem value={MONTHLY}>📅 This month ({monthLabel})</SelectItem>
+                  {sales
+                    .filter((s) => s.ended_at)
+                    .map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name} · {new Date(s.started_at).toLocaleDateString()}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
         </div>
       </header>
@@ -95,18 +180,18 @@ const Leaderboard = () => {
         <Card className="gradient-card-bg border-border lg:col-span-1">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Gift className="w-5 h-5 text-primary" /> This Month's Prize
+              <Gift className="w-5 h-5 text-primary" /> Top Trainer Prize
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {prize?.prize_rank_1_image_url ? (
               <div
                 className="aspect-video w-full rounded-lg overflow-hidden border border-border bg-muted cursor-pointer"
-                onClick={() => setIsPrizeImageCarouselOpen(true)} // Open carousel on click
+                onClick={() => setIsPrizeImageCarouselOpen(true)}
               >
                 <img
                   src={prize.prize_rank_1_image_url}
-                  alt="Monthly top trainer prize"
+                  alt="Top trainer prize"
                   className="w-full h-full object-contain"
                   loading="lazy"
                 />
@@ -118,7 +203,7 @@ const Leaderboard = () => {
             )}
             <p className="text-sm whitespace-pre-line">
               {prize?.prize_rank_1_text ||
-                "The top spending trainer of the month wins an exclusive prize. Keep claiming to climb the ranks!"}
+                "The top spending trainer wins an exclusive prize. Keep claiming to climb the ranks!"}
             </p>
             {top && (
               <div className="rounded-lg bg-primary/10 border border-primary/30 p-3 text-sm">
@@ -138,7 +223,7 @@ const Leaderboard = () => {
             <CardTitle>Top Trainers</CardTitle>
           </CardHeader>
           <CardContent>
-            {loading ? (
+            {rowsLoading ? (
               <div className="space-y-2">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <Skeleton key={i} className="h-14 w-full" />
@@ -147,7 +232,7 @@ const Leaderboard = () => {
             ) : rows.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <Trophy className="w-10 h-10 mx-auto mb-3 opacity-40" />
-                <p>No purchases yet this month. Be the first to claim the crown!</p>
+                <p>No purchases here yet. Be the first to claim the crown!</p>
               </div>
             ) : (
               <ol className="space-y-2">
