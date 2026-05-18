@@ -646,6 +646,8 @@ export default Admin;
 function PrizeEditor() {
   const [text, setText] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [enabled, setEnabled] = useState(true);
+  const [togglingEnabled, setTogglingEnabled] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -654,12 +656,13 @@ function PrizeEditor() {
     (async () => {
       const { data } = await supabase
         .from("app_settings")
-        .select("prize_rank_1_text, prize_rank_1_image_url")
+        .select("prize_rank_1_text, prize_rank_1_image_url, monthly_leaderboard_enabled")
         .eq("id", 1)
         .maybeSingle();
       if (data) {
         setText(data.prize_rank_1_text ?? "");
         setImageUrl(data.prize_rank_1_image_url ?? null);
+        setEnabled((data as any).monthly_leaderboard_enabled ?? true);
       }
     })();
   }, []);
@@ -697,6 +700,20 @@ function PrizeEditor() {
     }
   };
 
+  const toggleEnabled = async (next: boolean) => {
+    setTogglingEnabled(true);
+    const { error } = await supabase
+      .from("app_settings")
+      .upsert({ id: 1, monthly_leaderboard_enabled: next } as any, { onConflict: "id" });
+    setTogglingEnabled(false);
+    if (error) {
+      toast.error("Failed to update visibility");
+    } else {
+      setEnabled(next);
+      toast.success(next ? "Monthly leaderboard is now visible" : "Monthly leaderboard hidden");
+    }
+  };
+
   return (
     <Card className="gradient-card-bg border-border lg:col-span-2">
       <CardHeader>
@@ -705,6 +722,15 @@ function PrizeEditor() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
+        <div className="flex items-center justify-between rounded-lg border border-border p-3 bg-background/40">
+          <div className="min-w-0">
+            <Label className="text-sm">Show monthly leaderboard publicly</Label>
+            <p className="text-xs text-muted-foreground">
+              When off, the monthly tab and prize are hidden on /leaderboard. Per-sale leaderboards stay visible.
+            </p>
+          </div>
+          <Switch checked={enabled} onCheckedChange={toggleEnabled} disabled={togglingEnabled} />
+        </div>
         <div className="grid md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Prize Description</Label>
