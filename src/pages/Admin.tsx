@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { EditCardDialog } from "@/components/EditCardDialog";
 import { Textarea } from "@/components/ui/textarea";
 import { SaleManager } from "@/components/SaleManager";
+import { Switch } from "@/components/ui/switch";
 
 type DbCard = Database["public"]["Tables"]["cards"]["Row"];
 type PriceFilter = "all" | "under-100" | "100-500" | "500-1000" | "1000-plus";
