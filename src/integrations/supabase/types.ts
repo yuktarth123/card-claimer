@@ -17,6 +17,7 @@ export type Database = {
       app_settings: {
         Row: {
           id: number
+          monthly_leaderboard_enabled: boolean
           prize_rank_1_image_url: string | null
           prize_rank_1_text: string | null
           prize_rank_2_image_url: string | null
@@ -27,6 +28,7 @@ export type Database = {
         }
         Insert: {
           id?: number
+          monthly_leaderboard_enabled?: boolean
           prize_rank_1_image_url?: string | null
           prize_rank_1_text?: string | null
           prize_rank_2_image_url?: string | null
@@ -37,6 +39,7 @@ export type Database = {
         }
         Update: {
           id?: number
+          monthly_leaderboard_enabled?: boolean
           prize_rank_1_image_url?: string | null
           prize_rank_1_text?: string | null
           prize_rank_2_image_url?: string | null

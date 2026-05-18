@@ -16,6 +16,11 @@ import { CURRENCY, SELLER_NAME } from "@/config";
 import MediaCarouselDialog from "@/components/MediaCarouselDialog";
 
 type Row = { buyer_name: string; xp: number; purchases: number };
+type MonthlyPrize = {
+  prize_rank_1_text: string | null;
+  prize_rank_1_image_url: string | null;
+  monthly_leaderboard_enabled: boolean | null;
+};
 type SaleRow = {
   id: string;
   name: string;
@@ -41,6 +46,7 @@ const Leaderboard = () => {
   const [sales, setSales] = useState<SaleRow[]>([]);
   const [view, setView] = useState<string>(""); // sale id or MONTHLY
   const [rows, setRows] = useState<Row[]>([]);
+  const [monthly, setMonthly] = useState<MonthlyPrize | null>(null);
   const [loading, setLoading] = useState(true);
   const [rowsLoading, setRowsLoading] = useState(true);
   const [isPrizeImageCarouselOpen, setIsPrizeImageCarouselOpen] = useState(false);
@@ -49,7 +55,14 @@ const Leaderboard = () => {
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const { data: salesData } = await supabase.rpc("list_sales");
+      const [{ data: salesData }, { data: settingsData }] = await Promise.all([
+        supabase.rpc("list_sales"),
+        supabase
+          .from("app_settings")
+          .select("prize_rank_1_text, prize_rank_1_image_url, monthly_leaderboard_enabled")
+          .eq("id", 1)
+          .maybeSingle(),
+      ]);
       if (!mounted) return;
       const list = ((salesData ?? []) as any[]).map((r) => ({
         ...r,
@@ -57,11 +70,13 @@ const Leaderboard = () => {
         total_xp: Number(r.total_xp),
       })) as SaleRow[];
       setSales(list);
+      setMonthly((settingsData as MonthlyPrize | null) ?? null);
+      const monthlyEnabled = (settingsData as MonthlyPrize | null)?.monthly_leaderboard_enabled ?? true;
 
-      // Default: active sale → most recent past sale → monthly
+      // Default: active sale → most recent past sale → monthly (if enabled) → first sale
       const active = list.find((s) => !s.ended_at);
       const fallback = list[0];
-      setView(active?.id ?? fallback?.id ?? MONTHLY);
+      setView(active?.id ?? fallback?.id ?? (monthlyEnabled ? MONTHLY : ""));
       setLoading(false);
     })();
     return () => {
@@ -111,8 +126,11 @@ const Leaderboard = () => {
   const activeSale = sales.find((s) => !s.ended_at) ?? null;
   const currentSale = view === MONTHLY ? null : sales.find((s) => s.id === view) ?? null;
   const isMonthly = view === MONTHLY;
-  const prizeText = currentSale?.prize_text ?? null;
-  const prizeImageUrl = currentSale?.prize_image_url ?? null;
+  const monthlyEnabled = monthly?.monthly_leaderboard_enabled ?? true;
+  const prizeText = isMonthly ? monthly?.prize_rank_1_text ?? null : currentSale?.prize_text ?? null;
+  const prizeImageUrl = isMonthly
+    ? monthly?.prize_rank_1_image_url ?? null
+    : currentSale?.prize_image_url ?? null;
   const hasPrize = Boolean(prizeText || prizeImageUrl);
 
   const subtitle = useMemo(() => {
@@ -154,7 +172,9 @@ const Leaderboard = () => {
                       🔴 {activeSale.name} (live)
                     </SelectItem>
                   )}
-                  <SelectItem value={MONTHLY}>📅 This month ({monthLabel})</SelectItem>
+                  {monthlyEnabled && (
+                    <SelectItem value={MONTHLY}>📅 This month ({monthLabel})</SelectItem>
+                  )}
                   {sales
                     .filter((s) => s.ended_at)
                     .map((s) => (
@@ -178,22 +198,14 @@ const Leaderboard = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {isMonthly ? (
-              <div className="aspect-video w-full rounded-lg border border-dashed border-border flex flex-col items-center justify-center text-center text-muted-foreground p-4 gap-2">
-                <AppLogo className="w-8 h-8 opacity-40" alt="" />
-                <p className="text-sm font-semibold">Monthly view has no prize</p>
-                <p className="text-xs">
-                  Prizes are tied to individual sale events. Pick an active or past sale to see its prize.
-                </p>
-              </div>
-            ) : prizeImageUrl ? (
+            {prizeImageUrl ? (
               <div
                 className="aspect-video w-full rounded-lg overflow-hidden border border-border bg-muted cursor-pointer"
                 onClick={() => setIsPrizeImageCarouselOpen(true)}
               >
                 <img
                   src={prizeImageUrl}
-                  alt={`${currentSale?.name ?? "Sale"} prize`}
+                  alt={`${isMonthly ? "Monthly" : currentSale?.name ?? "Sale"} prize`}
                   className="w-full h-full object-contain"
                   loading="lazy"
                 />
@@ -203,16 +215,17 @@ const Leaderboard = () => {
                 <AppLogo className="w-8 h-8 opacity-40" alt="" />
                 <p className="text-sm font-semibold">Prize coming soon</p>
                 <p className="text-xs">
-                  The prize for {currentSale?.name ?? "this sale"} hasn't been announced yet — stay tuned!
+                  The prize for {isMonthly ? `${monthLabel}` : currentSale?.name ?? "this sale"} hasn't been
+                  announced yet — stay tuned!
                 </p>
               </div>
             )}
-            {!isMonthly && prizeText && (
+            {prizeText && (
               <p className="text-sm whitespace-pre-line">{prizeText}</p>
             )}
-            {!isMonthly && !hasPrize && (
+            {!hasPrize && (
               <p className="text-xs text-muted-foreground italic">
-                No prize details posted for this sale yet.
+                No prize details posted for {isMonthly ? "this month" : "this sale"} yet.
               </p>
             )}
             {top && (
@@ -281,7 +294,7 @@ const Leaderboard = () => {
         </Card>
       </main>
 
-      {!isMonthly && prizeImageUrl && (
+      {prizeImageUrl && (
         <MediaCarouselDialog
           open={isPrizeImageCarouselOpen}
           onOpenChange={setIsPrizeImageCarouselOpen}
