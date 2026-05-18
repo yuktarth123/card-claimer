@@ -113,6 +113,8 @@ export type Database = {
           ended_at: string | null
           id: string
           name: string
+          prize_image_url: string | null
+          prize_text: string | null
           started_at: string
         }
         Insert: {
@@ -120,6 +122,8 @@ export type Database = {
           ended_at?: string | null
           id?: string
           name: string
+          prize_image_url?: string | null
+          prize_text?: string | null
           started_at?: string
         }
         Update: {
@@ -127,6 +131,8 @@ export type Database = {
           ended_at?: string | null
           id?: string
           name?: string
+          prize_image_url?: string | null
+          prize_text?: string | null
           started_at?: string
         }
         Relationships: []
@@ -271,6 +277,8 @@ export type Database = {
           ended_at: string | null
           id: string
           name: string
+          prize_image_url: string | null
+          prize_text: string | null
           started_at: string
         }
         SetofOptions: {
@@ -331,6 +339,8 @@ export type Database = {
           ended_at: string
           id: string
           name: string
+          prize_image_url: string
+          prize_text: string
           started_at: string
           total_xp: number
           transaction_count: number
@@ -409,6 +419,8 @@ export type Database = {
           ended_at: string | null
           id: string
           name: string
+          prize_image_url: string | null
+          prize_text: string | null
           started_at: string
         }
         SetofOptions: {
@@ -455,6 +467,28 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "settings"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_sale_prize: {
+        Args: {
+          _prize_image_url: string
+          _prize_text: string
+          _sale_id: string
+        }
+        Returns: {
+          created_at: string
+          ended_at: string | null
+          id: string
+          name: string
+          prize_image_url: string | null
+          prize_text: string | null
+          started_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "sales"
           isOneToOne: true
           isSetofReturn: false
         }

@@ -16,10 +16,6 @@ import { CURRENCY, SELLER_NAME } from "@/config";
 import MediaCarouselDialog from "@/components/MediaCarouselDialog";
 
 type Row = { buyer_name: string; xp: number; purchases: number };
-type Prize = {
-  prize_rank_1_text: string | null;
-  prize_rank_1_image_url: string | null;
-};
 type SaleRow = {
   id: string;
   name: string;
@@ -27,6 +23,8 @@ type SaleRow = {
   ended_at: string | null;
   transaction_count: number;
   total_xp: number;
+  prize_text: string | null;
+  prize_image_url: string | null;
 };
 
 const monthLabel = new Date().toLocaleString(undefined, { month: "long", year: "numeric" });
@@ -43,7 +41,6 @@ const Leaderboard = () => {
   const [sales, setSales] = useState<SaleRow[]>([]);
   const [view, setView] = useState<string>(""); // sale id or MONTHLY
   const [rows, setRows] = useState<Row[]>([]);
-  const [prize, setPrize] = useState<Prize | null>(null);
   const [loading, setLoading] = useState(true);
   const [rowsLoading, setRowsLoading] = useState(true);
   const [isPrizeImageCarouselOpen, setIsPrizeImageCarouselOpen] = useState(false);
@@ -52,14 +49,7 @@ const Leaderboard = () => {
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const [{ data: salesData }, { data: settingsData }] = await Promise.all([
-        supabase.rpc("list_sales"),
-        supabase
-          .from("app_settings")
-          .select("prize_rank_1_text, prize_rank_1_image_url")
-          .eq("id", 1)
-          .maybeSingle(),
-      ]);
+      const { data: salesData } = await supabase.rpc("list_sales");
       if (!mounted) return;
       const list = ((salesData ?? []) as any[]).map((r) => ({
         ...r,
@@ -67,7 +57,6 @@ const Leaderboard = () => {
         total_xp: Number(r.total_xp),
       })) as SaleRow[];
       setSales(list);
-      setPrize((settingsData as Prize | null) ?? null);
 
       // Default: active sale → most recent past sale → monthly
       const active = list.find((s) => !s.ended_at);
@@ -120,6 +109,11 @@ const Leaderboard = () => {
 
   const top = rows[0];
   const activeSale = sales.find((s) => !s.ended_at) ?? null;
+  const currentSale = view === MONTHLY ? null : sales.find((s) => s.id === view) ?? null;
+  const isMonthly = view === MONTHLY;
+  const prizeText = currentSale?.prize_text ?? null;
+  const prizeImageUrl = currentSale?.prize_image_url ?? null;
+  const hasPrize = Boolean(prizeText || prizeImageUrl);
 
   const subtitle = useMemo(() => {
     if (view === MONTHLY) return `${monthLabel} · monthly`;
@@ -184,27 +178,43 @@ const Leaderboard = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {prize?.prize_rank_1_image_url ? (
+            {isMonthly ? (
+              <div className="aspect-video w-full rounded-lg border border-dashed border-border flex flex-col items-center justify-center text-center text-muted-foreground p-4 gap-2">
+                <AppLogo className="w-8 h-8 opacity-40" alt="" />
+                <p className="text-sm font-semibold">Monthly view has no prize</p>
+                <p className="text-xs">
+                  Prizes are tied to individual sale events. Pick an active or past sale to see its prize.
+                </p>
+              </div>
+            ) : prizeImageUrl ? (
               <div
                 className="aspect-video w-full rounded-lg overflow-hidden border border-border bg-muted cursor-pointer"
                 onClick={() => setIsPrizeImageCarouselOpen(true)}
               >
                 <img
-                  src={prize.prize_rank_1_image_url}
-                  alt="Top trainer prize"
+                  src={prizeImageUrl}
+                  alt={`${currentSale?.name ?? "Sale"} prize`}
                   className="w-full h-full object-contain"
                   loading="lazy"
                 />
               </div>
             ) : (
-              <div className="aspect-video w-full rounded-lg border border-dashed border-border flex items-center justify-center text-muted-foreground">
-                <AppLogo className="w-10 h-10 opacity-40" alt="" />
+              <div className="aspect-video w-full rounded-lg border border-dashed border-border flex flex-col items-center justify-center text-center text-muted-foreground p-4 gap-2">
+                <AppLogo className="w-8 h-8 opacity-40" alt="" />
+                <p className="text-sm font-semibold">Prize coming soon</p>
+                <p className="text-xs">
+                  The prize for {currentSale?.name ?? "this sale"} hasn't been announced yet — stay tuned!
+                </p>
               </div>
             )}
-            <p className="text-sm whitespace-pre-line">
-              {prize?.prize_rank_1_text ||
-                "The top spending trainer wins an exclusive prize. Keep claiming to climb the ranks!"}
-            </p>
+            {!isMonthly && prizeText && (
+              <p className="text-sm whitespace-pre-line">{prizeText}</p>
+            )}
+            {!isMonthly && !hasPrize && (
+              <p className="text-xs text-muted-foreground italic">
+                No prize details posted for this sale yet.
+              </p>
+            )}
             {top && (
               <div className="rounded-lg bg-primary/10 border border-primary/30 p-3 text-sm">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">Current leader</p>
@@ -271,11 +281,11 @@ const Leaderboard = () => {
         </Card>
       </main>
 
-      {prize?.prize_rank_1_image_url && (
+      {!isMonthly && prizeImageUrl && (
         <MediaCarouselDialog
           open={isPrizeImageCarouselOpen}
           onOpenChange={setIsPrizeImageCarouselOpen}
-          mediaUrls={[prize.prize_rank_1_image_url]}
+          mediaUrls={[prizeImageUrl]}
           initialIndex={0}
         />
       )}
