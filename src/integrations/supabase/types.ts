@@ -25,6 +25,8 @@ export type Database = {
           prize_rank_3_image_url: string | null
           prize_rank_3_text: string | null
           sale_start_time: string | null
+          site_wide_sale_active: boolean
+          site_wide_sale_percent: number | null
         }
         Insert: {
           id?: number
@@ -36,6 +38,8 @@ export type Database = {
           prize_rank_3_image_url?: string | null
           prize_rank_3_text?: string | null
           sale_start_time?: string | null
+          site_wide_sale_active?: boolean
+          site_wide_sale_percent?: number | null
         }
         Update: {
           id?: number
@@ -47,6 +51,8 @@ export type Database = {
           prize_rank_3_image_url?: string | null
           prize_rank_3_text?: string | null
           sale_start_time?: string | null
+          site_wide_sale_active?: boolean
+          site_wide_sale_percent?: number | null
         }
         Relationships: []
       }
@@ -63,6 +69,7 @@ export type Database = {
           id: string
           name: string
           photo_url: string | null
+          pre_sale_price: number | null
           price: number
           rarity: string | null
           sale_price: number | null
@@ -82,6 +89,7 @@ export type Database = {
           id?: string
           name: string
           photo_url?: string | null
+          pre_sale_price?: number | null
           price?: number
           rarity?: string | null
           sale_price?: number | null
@@ -101,6 +109,7 @@ export type Database = {
           id?: string
           name?: string
           photo_url?: string | null
+          pre_sale_price?: number | null
           price?: number
           rarity?: string | null
           sale_price?: number | null
@@ -211,6 +220,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_site_wide_sale: { Args: { _percent: number }; Returns: undefined }
       claim_card:
         | {
             Args: { _buyer_name: string; _card_id: string; _session_id: string }
@@ -226,6 +236,7 @@ export type Database = {
               id: string
               name: string
               photo_url: string | null
+              pre_sale_price: number | null
               price: number
               rarity: string | null
               sale_price: number | null
@@ -259,6 +270,7 @@ export type Database = {
               id: string
               name: string
               photo_url: string | null
+              pre_sale_price: number | null
               price: number
               rarity: string | null
               sale_price: number | null
@@ -291,6 +303,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      end_site_wide_sale: { Args: never; Returns: undefined }
       finalize_claims: {
         Args: { _session_id: string }
         Returns: {
@@ -305,6 +318,7 @@ export type Database = {
           id: string
           name: string
           photo_url: string | null
+          pre_sale_price: number | null
           price: number
           rarity: string | null
           sale_price: number | null
@@ -368,6 +382,7 @@ export type Database = {
               id: string
               name: string
               photo_url: string | null
+              pre_sale_price: number | null
               price: number
               rarity: string | null
               sale_price: number | null
@@ -401,6 +416,7 @@ export type Database = {
               id: string
               name: string
               photo_url: string | null
+              pre_sale_price: number | null
               price: number
               rarity: string | null
               sale_price: number | null
@@ -447,6 +463,7 @@ export type Database = {
           id: string
           name: string
           photo_url: string | null
+          pre_sale_price: number | null
           price: number
           rarity: string | null
           sale_price: number | null

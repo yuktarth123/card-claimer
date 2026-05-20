@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { EditCardDialog } from "@/components/EditCardDialog";
 import { Textarea } from "@/components/ui/textarea";
 import { SaleManager } from "@/components/SaleManager";
+import { SiteWideSaleManager } from "@/components/SiteWideSaleManager";
 import { Switch } from "@/components/ui/switch";
 
 type DbCard = Database["public"]["Tables"]["cards"]["Row"];
@@ -368,6 +369,8 @@ const Admin = () => {
         <PrizeEditor />
 
         <SaleManager />
+
+        <SiteWideSaleManager />
 
         {/* Quick list form */}
         <Card className="gradient-card-bg border-border">
