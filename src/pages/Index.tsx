@@ -6,11 +6,12 @@ import { NameGate } from "@/components/NameGate";
 import { CheckoutSheet } from "@/components/CheckoutSheet";
 import { useBuyer } from "@/hooks/useBuyer";
 import { toast } from "sonner";
-import { Zap, Trophy } from "lucide-react";
+import { Zap, Trophy, Search, X, Truck, SlidersHorizontal, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Link } from "react-router-dom";
 import CountdownTimer from "@/components/CountdownTimer";
-import { CURRENCY, SELLER_NAME } from "@/config";
+import { CURRENCY, SELLER_NAME, CARD_CONDITIONS, ITEM_TYPES } from "@/config";
 import AppLogo from "@/components/AppLogo";
 import {
   Select,
@@ -20,36 +21,59 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import WhatsAppBanner from "@/components/WhatsAppBanner";
-import PwaInstallBanner from "@/components/PwaInstallBanner"; // Import the new PWA banner
+import PwaInstallBanner from "@/components/PwaInstallBanner";
+import { cn } from "@/lib/utils";
 
 type Card = Database["public"]["Tables"]["cards"]["Row"];
+type Claim = Database["public"]["Tables"]["claims"]["Row"];
 type Filter = "all" | "available" | "mine";
 type SortOrder = "none" | "price-asc" | "price-desc";
+const ALL = "__all__";
 
 const Index = () => {
   const { name, phone, sessionId, setName, setIdentity } = useBuyer();
   const [cards, setCards] = useState<Card[]>([]);
+  const [claims, setClaims] = useState<Claim[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("all");
-  const [sortOrder, setSortOrder] = useState<SortOrder>("price-desc"); // Changed default sort order
+  const [sortOrder, setSortOrder] = useState<SortOrder>("price-desc");
+  const [search, setSearch] = useState("");
+  const [itemTypeFilter, setItemTypeFilter] = useState(ALL);
+  const [cardSetFilter, setCardSetFilter] = useState(ALL);
+  const [categoryFilter, setCategoryFilter] = useState(ALL);
+  const [conditionFilter, setConditionFilter] = useState(ALL);
+  const [preorderOnly, setPreorderOnly] = useState(false);
+  const [vintageOnly, setVintageOnly] = useState(false);
   const [isSaleLive, setIsSaleLive] = useState(false);
   const [saleStartTime, setSaleStartTime] = useState<string | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  const refetchClaims = async () => {
+    if (!sessionId) return;
+    const { data, error } = await supabase.rpc("get_my_claims", { _session_id: sessionId });
+    if (data) setClaims(data);
+    if (error) console.error("Error fetching claims:", error);
+  };
 
   useEffect(() => {
     let mounted = true;
 
     const fetchInitialData = async () => {
-      // Fetch cards
       const { data: cardsData, error: cardsError } = await supabase
         .from("cards")
         .select("*")
-        .neq("status", "checked_out")
         .order("created_at", { ascending: false });
 
       if (mounted && cardsData) setCards(cardsData);
       if (cardsError) console.error("Error fetching cards:", cardsError);
 
-      // Fetch sale start time
+      const { data: claimsData, error: claimsError } = await supabase.rpc("get_my_claims", {
+        _session_id: sessionId || "",
+      });
+
+      if (mounted && claimsData) setClaims(claimsData);
+      if (claimsError) console.error("Error fetching claims:", claimsError);
+
       const { data: settingsData, error: settingsError } = await supabase
         .from("app_settings")
         .select("sale_start_time")
@@ -64,7 +88,6 @@ const Index = () => {
           setSaleStartTime(settingsData.sale_start_time);
           setIsSaleLive(new Date() >= new Date(settingsData.sale_start_time));
         } else {
-          // If no sale_start_time is set, sale is not live
           setSaleStartTime(null);
           setIsSaleLive(false);
         }
@@ -72,7 +95,9 @@ const Index = () => {
       setLoading(false);
     };
 
-    fetchInitialData();
+    if (sessionId) {
+      fetchInitialData();
+    }
 
     const cardsChannel = supabase
       .channel("index-cards-changes")
@@ -82,15 +107,10 @@ const Index = () => {
         (payload) => {
           setCards((prev) => {
             if (payload.eventType === "INSERT") {
-              const c = payload.new as Card;
-              if (c.status === "checked_out") return prev;
-              return [c, ...prev];
+              return [payload.new as Card, ...prev];
             }
             if (payload.eventType === "UPDATE") {
               const next = payload.new as Card;
-              if (next.status === "checked_out") {
-                return prev.filter((c) => c.id !== next.id);
-              }
               const exists = prev.some((c) => c.id === next.id);
               return exists ? prev.map((c) => (c.id === next.id ? next : c)) : [next, ...prev];
             }
@@ -102,6 +122,13 @@ const Index = () => {
         }
       )
       .subscribe();
+
+    // Note: there's no realtime subscription for claims here. Buyers
+    // read their own claims only through the get_my_claims RPC (see
+    // refetchClaims above) -- claims SELECT is admin-only via RLS, and
+    // Supabase Realtime enforces that same RLS on postgres_changes, so an
+    // anon subscription to this table would silently never fire anyway.
+    // Refetch explicitly after every claim/unclaim/checkout action instead.
 
     const settingsChannel = supabase
       .channel("index-settings-changes")
@@ -121,85 +148,159 @@ const Index = () => {
       supabase.removeChannel(cardsChannel);
       supabase.removeChannel(settingsChannel);
     };
+  }, [sessionId]);
+
+  // release_expired_claims() only ever runs as a side effect inside
+  // claim_units() -- if a buyer claims something and closes their tab
+  // without checking out, and nobody else claims anything afterward, that
+  // stock stays locked forever. Sweep on an interval so it happens on its
+  // own as long as anyone has the storefront open, independent of whether
+  // new claims are being made. The resulting `cards` update flows back
+  // through the realtime subscription above, no manual refetch needed.
+  useEffect(() => {
+    const sweep = () => {
+      supabase.rpc("release_expired_claims").then(({ error }) => {
+        if (error) console.error("Error releasing expired claims:", error);
+      });
+    };
+    sweep();
+    const interval = setInterval(sweep, 30_000);
+    return () => clearInterval(interval);
   }, []);
 
-  const myCards = useMemo(
-    () => cards.filter((c) => c.buyer_session_id === sessionId && c.status === "claimed"),
-    [cards, sessionId]
+  const myClaimsByCard = useMemo(() => {
+    const map: Record<string, Claim[]> = {};
+    for (const claim of claims) {
+      if (!map[claim.card_id]) map[claim.card_id] = [];
+      map[claim.card_id].push(claim);
+    }
+    return map;
+  }, [claims]);
+
+  const myPendingClaims = useMemo(
+    () => claims.filter((c) => c.status === "claimed"),
+    [claims]
   );
+
+  const availableSets = useMemo(
+    () => Array.from(new Set(cards.map((c) => c.card_set).filter(Boolean))).sort((a, b) => a.localeCompare(b)) as string[],
+    [cards]
+  );
+  const availableCategories = useMemo(
+    () => Array.from(new Set(cards.map((c) => c.category).filter(Boolean))).sort((a, b) => a.localeCompare(b)) as string[],
+    [cards]
+  );
+  const availableItemTypes = useMemo(
+    () => ITEM_TYPES.filter((t) => cards.some((c) => c.item_type === t.value)),
+    [cards]
+  );
+
+  const hasAdvancedFilters =
+    itemTypeFilter !== ALL ||
+    cardSetFilter !== ALL ||
+    categoryFilter !== ALL ||
+    conditionFilter !== ALL ||
+    preorderOnly ||
+    vintageOnly;
+
+  const hasActiveFilters =
+    search.trim() !== "" ||
+    hasAdvancedFilters ||
+    filter !== "all";
+
+  const clearFilters = () => {
+    setSearch("");
+    setItemTypeFilter(ALL);
+    setCardSetFilter(ALL);
+    setCategoryFilter(ALL);
+    setConditionFilter(ALL);
+    setPreorderOnly(false);
+    setVintageOnly(false);
+    setFilter("all");
+  };
 
   const visible = useMemo(() => {
     let filteredCards = cards;
 
     if (filter === "available") {
-      filteredCards = cards.filter((c) => c.status === "available");
+      filteredCards = cards.filter((c) => c.quantity_available > 0);
     } else if (filter === "mine") {
-      filteredCards = myCards;
+      filteredCards = cards.filter((c) => (myClaimsByCard[c.id]?.length ?? 0) > 0);
     }
 
-    // Apply sorting
+    const q = search.trim().toLowerCase();
+    if (q) {
+      filteredCards = filteredCards.filter((c) =>
+        [c.name, c.card_set, c.card_number, c.rarity].filter(Boolean).some((f) => f!.toLowerCase().includes(q))
+      );
+    }
+    if (itemTypeFilter !== ALL) filteredCards = filteredCards.filter((c) => c.item_type === itemTypeFilter);
+    if (cardSetFilter !== ALL) filteredCards = filteredCards.filter((c) => c.card_set === cardSetFilter);
+    if (categoryFilter !== ALL) filteredCards = filteredCards.filter((c) => c.category === categoryFilter);
+    if (conditionFilter !== ALL) filteredCards = filteredCards.filter((c) => c.condition === conditionFilter);
+    if (preorderOnly) filteredCards = filteredCards.filter((c) => c.is_preorder);
+    if (vintageOnly) filteredCards = filteredCards.filter((c) => c.is_vintage);
+
     if (sortOrder === "price-asc") {
       filteredCards = [...filteredCards].sort((a, b) => Number(a.price) - Number(b.price));
     } else if (sortOrder === "price-desc") {
       filteredCards = [...filteredCards].sort((a, b) => Number(b.price) - Number(a.price));
-    } else {
-      // Default sort (created_at descending) is already handled by the initial fetch
-      // If "none" is selected, we just use the initially fetched order.
-      // No explicit sort needed here if the initial fetch already orders by created_at.
     }
 
     return filteredCards;
-  }, [cards, filter, myCards, sortOrder]);
+  }, [cards, filter, myClaimsByCard, sortOrder, search, itemTypeFilter, cardSetFilter, categoryFilter, conditionFilter, preorderOnly, vintageOnly]);
 
   const totalListedValue = useMemo(() => {
-    return cards.reduce((sum, card) => sum + Number(card.price), 0);
+    return cards.reduce((sum, card) => sum + Number(card.price) * card.quantity_available, 0);
   }, [cards]);
 
-  const handleClaim = async (card: Card) => {
+  const handleClaim = async (card: Card, quantity: number) => {
     if (!isSaleLive) {
       toast.info("The sale hasn't started yet! Stay tuned.");
       return;
     }
     if (!name) return;
-    // Haptic feedback on mobile
     if (typeof navigator !== "undefined" && "vibrate" in navigator) {
       navigator.vibrate?.(20);
     }
-    const { error } = await supabase.rpc("claim_card", {
+    const { error } = await supabase.rpc("claim_units", {
       _card_id: card.id,
       _buyer_name: name,
       _session_id: sessionId,
+      _quantity: quantity,
       _buyer_phone: phone || null,
     });
     if (error) {
       if (typeof navigator !== "undefined" && "vibrate" in navigator) {
         navigator.vibrate?.([40, 30, 40]);
       }
-      toast.error("Too late! Someone beat you to it.");
+      toast.error(error.message?.includes("left in stock") ? error.message : "Too late! Someone beat you to it.");
     } else {
-      toast.success(`Claimed ${card.name}!`, { description: "Open your cart to checkout." });
+      toast.success(`Claimed ${quantity} × ${card.name}!`, { description: "Open your cart to checkout." });
+      await refetchClaims();
     }
   };
 
-  const handleUnclaim = async (card: Card, toastIdToDismiss?: string | number) => { // Updated to accept toastIdToDismiss as string | number
+  const handleUnclaim = async (claim: Claim, toastIdToDismiss?: string | number) => {
     if (typeof navigator !== "undefined" && "vibrate" in navigator) {
       navigator.vibrate?.(10);
     }
-    const { error } = await supabase.rpc("unclaim_card", {
-      _card_id: card.id,
+    const { error } = await supabase.rpc("release_claim", {
+      _claim_id: claim.id,
       _session_id: sessionId,
     });
     if (error) {
       toast.error("Couldn't unclaim");
     } else {
-      toast("Released", { description: card.name });
+      toast("Released");
       if (toastIdToDismiss) {
-        toast.dismiss(toastIdToDismiss); // Dismiss the specific warning toast
+        toast.dismiss(toastIdToDismiss);
       }
+      await refetchClaims();
     }
   };
 
-  const availableCount = cards.filter((c) => c.status === "available").length;
+  const availableCount = cards.filter((c) => c.quantity_available > 0).length;
 
   return (
     <div className="min-h-screen pb-28">
@@ -212,7 +313,7 @@ const Index = () => {
           });
         }}
       />
-      <PwaInstallBanner /> {/* Integrated the PWA Install Banner here */}
+      <PwaInstallBanner />
 
       {/* Hero */}
       <header className="relative overflow-hidden border-b border-border">
@@ -220,9 +321,9 @@ const Index = () => {
         <div className="relative container py-8 md:py-12">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-10 h-10 rounded-xl gradient-gold flex items-center justify-center shadow-glow">
-              <AppLogo className="w-full h-full" alt="Yanks TCG Logo" />
+              <AppLogo className="w-full h-full" alt={`${SELLER_NAME} Logo`} />
             </div>
-            <span className="font-bold tracking-wide text-sm uppercase text-muted-foreground">
+            <span className="font-display font-bold tracking-wide text-base uppercase text-foreground">
               {SELLER_NAME}
             </span>
             <Link
@@ -237,13 +338,13 @@ const Index = () => {
           </h1>
           <p className="text-muted-foreground mt-2 max-w-xl">
             {isSaleLive
-              ? "First trainer to claim wins the card. Tap to lock it in — everyone sees it instantly."
-              : "Get ready! Preview cards now, the live sale starts soon. First-come, first-served when it goes live!"}
+              ? "Claim as many units as you want — first come, first served while stock lasts."
+              : "Get ready! Preview the cards now, the live sale starts soon."}
           </p>
           <div className="flex flex-wrap items-center gap-2 mt-5">
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/15 border border-success/30">
               <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
-              <span className="text-sm font-semibold text-success">{availableCount} available</span>
+              <span className="text-sm font-semibold text-success">{availableCount} listings in stock</span>
             </div>
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/15 border border-primary/30">
               <span className="text-sm font-semibold text-primary">Total Listed: {CURRENCY}{totalListedValue.toFixed(0)}</span>
@@ -272,12 +373,32 @@ const Index = () => {
       <main className="container py-6">
         <WhatsAppBanner className="mb-6" />
 
-        {/* Filter pills and Sort dropdown */}
-        <div className="flex flex-wrap items-center gap-2 mb-5 overflow-x-auto pb-1">
+        {/* Search */}
+        <div className="relative mb-3">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name, set, or card number…"
+            className="pl-9 pr-9"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              aria-label="Clear search"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Filter pills, facet selects, and Sort dropdown */}
+        <div className="flex flex-wrap items-center gap-2 mb-3">
           {([
             { k: "all", label: `All (${cards.length})` },
-            { k: "available", label: `Available (${availableCount})` },
-            { k: "mine", label: `My Claims (${myCards.length})` },
+            { k: "available", label: `In Stock (${availableCount})` },
+            { k: "mine", label: `My Claims (${Object.keys(myClaimsByCard).length})` },
           ] as const).map((f) => (
             <Button
               key={f.k}
@@ -289,6 +410,79 @@ const Index = () => {
               {f.label}
             </Button>
           ))}
+
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setFiltersOpen((v) => !v)}
+            className="md:hidden ml-auto"
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5 mr-1.5" />
+            Filters
+            {hasAdvancedFilters && <span className="ml-1.5 w-1.5 h-1.5 rounded-full bg-primary" />}
+          </Button>
+        </div>
+
+        <div className={cn("flex-wrap items-center gap-2 mb-5 overflow-x-auto pb-1 md:flex", filtersOpen ? "flex" : "hidden")}>
+          {availableItemTypes.length > 1 && (
+            <Select value={itemTypeFilter} onValueChange={setItemTypeFilter}>
+              <SelectTrigger className="w-[150px]"><SelectValue placeholder="Item type" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>Any item type</SelectItem>
+                {availableItemTypes.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
+          {availableSets.length > 0 && (
+            <Select value={cardSetFilter} onValueChange={setCardSetFilter}>
+              <SelectTrigger className="w-[150px]"><SelectValue placeholder="Set" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>Any set</SelectItem>
+                {availableSets.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
+          {availableCategories.length > 0 && (
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="w-[150px]"><SelectValue placeholder="Category" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>Any category</SelectItem>
+                {availableCategories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
+          <Select value={conditionFilter} onValueChange={setConditionFilter}>
+            <SelectTrigger className="w-[150px]"><SelectValue placeholder="Condition" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>Any condition</SelectItem>
+              {CARD_CONDITIONS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+            </SelectContent>
+          </Select>
+
+          <Button
+            size="sm"
+            variant={preorderOnly ? "default" : "outline"}
+            onClick={() => setPreorderOnly((v) => !v)}
+            className={preorderOnly ? "bg-secondary hover:bg-secondary/90 text-secondary-foreground font-bold border-0" : ""}
+          >
+            <Truck className="w-3.5 h-3.5 mr-1" /> Pre-Orders
+          </Button>
+
+          <Button
+            size="sm"
+            variant={vintageOnly ? "default" : "outline"}
+            onClick={() => setVintageOnly((v) => !v)}
+            className={vintageOnly ? "bg-amber-900 hover:bg-amber-900/90 text-amber-100 font-bold border-0" : ""}
+          >
+            <History className="w-3.5 h-3.5 mr-1" /> Vintage
+          </Button>
+
+          {hasActiveFilters && (
+            <Button size="sm" variant="ghost" onClick={clearFilters} className="text-muted-foreground">
+              <X className="w-3.5 h-3.5 mr-1" /> Clear
+            </Button>
+          )}
+
           <div className="ml-auto">
             <Select value={sortOrder} onValueChange={(value: SortOrder) => setSortOrder(value)}>
               <SelectTrigger className="w-[180px]">
@@ -311,8 +505,17 @@ const Index = () => {
           </div>
         ) : visible.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">
-            <AppLogo className="w-12 h-12 mx-auto mb-3 opacity-40" alt="Yanks TCG Logo" />
-            <p className="text-lg">No cards here yet. Check back soon!</p>
+            <AppLogo className="w-12 h-12 mx-auto mb-3 opacity-40" alt={`${SELLER_NAME} Logo`} />
+            {cards.length === 0 ? (
+              <p className="text-lg">No listings here yet. Check back soon!</p>
+            ) : (
+              <>
+                <p className="text-lg">No listings match your search or filters.</p>
+                <Button variant="outline" size="sm" onClick={clearFilters} className="mt-3">
+                  Clear filters
+                </Button>
+              </>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
@@ -320,7 +523,7 @@ const Index = () => {
               <CardTile
                 key={c.id}
                 card={c}
-                isMine={c.buyer_session_id === sessionId && c.status === "claimed"}
+                myClaims={myClaimsByCard[c.id] || []}
                 onClaim={handleClaim}
                 onUnclaim={handleUnclaim}
                 disabled={!name && isSaleLive}
@@ -331,7 +534,7 @@ const Index = () => {
         )}
       </main>
 
-      <CheckoutSheet myCards={myCards} buyerName={name} onUnclaim={handleUnclaim} isSaleLive={isSaleLive} />
+      <CheckoutSheet myClaims={myPendingClaims} cards={cards} buyerName={name} onUnclaim={handleUnclaim} isSaleLive={isSaleLive} onFinalized={refetchClaims} />
     </div>
   );
 };

@@ -124,7 +124,7 @@ export function SaleTimeManager() {
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
       ) : (
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col lg:flex-row gap-3">
           <Popover>
             <PopoverTrigger asChild>
               <Button
@@ -147,7 +147,7 @@ export function SaleTimeManager() {
               />
             </PopoverContent>
           </Popover>
-          <div className="relative w-full sm:w-auto">
+          <div className="relative w-full lg:w-auto">
             <Input
               id="sale-start-time"
               type="time"
@@ -157,7 +157,7 @@ export function SaleTimeManager() {
             />
             <Clock className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           </div>
-          <Button onClick={saveSaleStartTime} disabled={isSaving || !saleStartTime} className="w-full sm:w-auto">
+          <Button onClick={saveSaleStartTime} disabled={isSaving || !saleStartTime} className="w-full lg:w-auto">
             {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
             Save
           </Button>

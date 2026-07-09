@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, useEffect } from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import useEmblaCarousel from "embla-carousel-react";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
@@ -73,15 +73,18 @@ const MediaCarouselDialog: React.FC<MediaCarouselDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="fixed inset-0 w-screen h-screen p-0 border-none bg-black/80 flex items-center justify-center translate-x-0 translate-y-0 overflow-hidden">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute top-4 right-4 z-50 text-white hover:bg-white/20 hover:text-white"
-          onClick={() => onOpenChange(false)}
-        >
-          <X className="h-6 w-6" />
-        </Button>
+      <DialogContent className="fixed inset-0 w-screen h-screen p-0 border-none bg-black/80 flex items-center justify-center translate-x-0 translate-y-0 overflow-hidden [&>button]:hidden">
+        <DialogTitle className="sr-only">Media viewer</DialogTitle>
+        <div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute top-4 right-4 z-50 text-white hover:bg-white/20 hover:text-white"
+            onClick={() => onOpenChange(false)}
+          >
+            <X className="h-6 w-6" />
+          </Button>
+        </div>
 
         <div className="relative flex-1 flex items-center justify-center w-full h-full">
           <div className="overflow-hidden w-full h-full flex items-center justify-center" ref={emblaRef}>

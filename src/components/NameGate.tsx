@@ -24,9 +24,9 @@ export function NameGate({ open, onSubmit }: Props) {
       <DialogContent className="sm:max-w-sm [&>button]:hidden" onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
         <DialogHeader>
           <div className="mx-auto w-14 h-14 rounded-full gradient-gold flex items-center justify-center mb-2 shadow-glow">
-            <AppLogo className="w-full h-full" alt="Yanks TCG Logo" />
+            <AppLogo className="w-full h-full" alt={`${SELLER_NAME} Logo`} />
           </div>
-          <DialogTitle className="text-center text-2xl">Welcome, Trainer!</DialogTitle>
+          <DialogTitle className="text-center text-2xl">Welcome!</DialogTitle>
           <DialogDescription className="text-center">
             Enter your name and phone to start claiming cards. Your phone helps us track your XP for the monthly leaderboard.
           </DialogDescription>
@@ -40,7 +40,7 @@ export function NameGate({ open, onSubmit }: Props) {
         >
           <Input
             autoFocus
-            placeholder="Your name (e.g. Ash)"
+            placeholder="Your name (e.g. Sam)"
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="h-12 text-lg"
