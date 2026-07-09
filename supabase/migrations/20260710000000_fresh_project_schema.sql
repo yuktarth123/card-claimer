@@ -468,7 +468,12 @@ BEGIN
   SET pre_sale_price = sale_price
   WHERE NOT EXISTS (SELECT 1 FROM public.app_settings WHERE id = 1 AND site_wide_sale_active = true);
 
-  UPDATE public.cards SET sale_price = ROUND(price * (1 - _percent / 100.0));
+  -- The `WHERE true` isn't decorative: PostgREST connects through the
+  -- `authenticator` role, which has `safeupdate` preloaded on this project
+  -- and rejects any UPDATE/DELETE with no WHERE clause at all -- confirmed
+  -- by testing this RPC through the real API, not just via a direct SQL
+  -- console (which bypasses that role and would never catch this).
+  UPDATE public.cards SET sale_price = ROUND(price * (1 - _percent / 100.0)) WHERE true;
 
   UPDATE public.app_settings SET site_wide_sale_active = true, site_wide_sale_percent = _percent WHERE id = 1;
 END;
@@ -479,7 +484,7 @@ RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
 AS $$
 BEGIN
-  UPDATE public.cards SET sale_price = pre_sale_price, pre_sale_price = NULL;
+  UPDATE public.cards SET sale_price = pre_sale_price, pre_sale_price = NULL WHERE true;
   UPDATE public.app_settings SET site_wide_sale_active = false, site_wide_sale_percent = NULL WHERE id = 1;
 END;
 $$;
@@ -496,7 +501,20 @@ GRANT EXECUTE ON FUNCTION public.list_sales() TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_monthly_leaderboard() TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_sale_leaderboard(uuid) TO anon, authenticated;
 
--- Admin-only: requires a logged-in /admin session.
+-- Admin-only: requires a logged-in /admin session. Supabase's default
+-- privileges auto-GRANT EXECUTE on every new public-schema function to
+-- anon/authenticated/service_role, independent of anything granted here --
+-- confirmed live: without the explicit REVOKE below, the anon key could
+-- call every one of these directly (start a sale, mark claims sold, force
+-- a site-wide discount, etc.), completely bypassing admin auth.
+REVOKE EXECUTE ON FUNCTION public.admin_release_claim(uuid) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.mark_claim_as_sold(uuid, text, numeric, text) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.start_sale(text) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.end_active_sale() FROM anon;
+REVOKE EXECUTE ON FUNCTION public.update_sale_prize(uuid, text, text) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.apply_site_wide_sale(numeric) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.end_site_wide_sale() FROM anon;
+
 GRANT EXECUTE ON FUNCTION public.admin_release_claim(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.mark_claim_as_sold(uuid, text, numeric, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.start_sale(text) TO authenticated;
