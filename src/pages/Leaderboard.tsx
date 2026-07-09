@@ -151,19 +151,21 @@ const Leaderboard = () => {
           >
             <ChevronLeft className="w-4 h-4" /> Back to sale
           </Link>
-          <div className="flex flex-wrap items-center gap-3 mb-2">
-            <div className="w-12 h-12 rounded-xl gradient-gold flex items-center justify-center shadow-glow">
-              <Trophy className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-2xl md:text-4xl font-black">Trainer Leaderboard</h1>
-              <p className="text-sm text-muted-foreground truncate">
-                {SELLER_NAME} • {subtitle || "loading…"} • 1 XP per {CURRENCY}1 spent
-              </p>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-2">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-12 h-12 shrink-0 rounded-xl gradient-gold flex items-center justify-center shadow-glow">
+                <Trophy className="w-6 h-6 text-primary-foreground" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-2xl md:text-4xl font-black">Trainer Leaderboard</h1>
+                <p className="text-sm text-muted-foreground truncate">
+                  {SELLER_NAME} • {subtitle || "loading…"} • 1 XP per {CURRENCY}1 spent
+                </p>
+              </div>
             </div>
             {!loading && (
               <Select value={view} onValueChange={setView}>
-                <SelectTrigger className="w-[220px]">
+                <SelectTrigger className="w-full sm:w-[220px]">
                   <SelectValue placeholder="Choose leaderboard" />
                 </SelectTrigger>
                 <SelectContent>

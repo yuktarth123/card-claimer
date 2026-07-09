@@ -84,7 +84,7 @@ export function SiteWideSaleManager() {
           <div className="rounded-lg border border-success/40 bg-success/10 p-3 space-y-3">
             <div>
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Active</p>
-              <p className="font-bold">{percent}% off every card</p>
+              <p className="font-bold">{percent}% off every listing</p>
               <p className="text-xs text-muted-foreground">
                 Original sale prices are backed up and will be restored when you end the sale.
               </p>

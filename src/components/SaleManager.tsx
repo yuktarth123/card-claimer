@@ -48,6 +48,20 @@ export function SaleManager() {
 
   useEffect(() => {
     refresh();
+
+    // Keep transaction_count/total_xp live -- a sale can be marked sold from
+    // elsewhere in the console (the Live Listings panel), which wouldn't
+    // otherwise touch this component's state.
+    const channel = supabase
+      .channel("sale-manager-transactions")
+      .on("postgres_changes", { event: "*", schema: "public", table: "transactions" }, () => {
+        refresh();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const active = sales.find((s) => !s.ended_at) ?? null;
@@ -130,7 +144,7 @@ export function SaleManager() {
       <Label className="text-xs">Prize description</Label>
       <Textarea
         rows={2}
-        placeholder="e.g. Charizard ex booster box + ₹1,000 store credit"
+        placeholder="e.g. Limited-edition booster box + ₹1,000 store credit"
         value={prizeText}
         onChange={(e) => setPrizeText(e.target.value)}
       />
