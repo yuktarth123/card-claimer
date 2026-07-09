@@ -305,7 +305,7 @@ const Index = () => {
   return (
     <div className="min-h-screen pb-28">
       <NameGate
-        open={!name && isSaleLive}
+        open={!name}
         onSubmit={(n, p) => {
           setIdentity(n, p);
           toast.success(`Welcome, ${n}! 👋`, {
