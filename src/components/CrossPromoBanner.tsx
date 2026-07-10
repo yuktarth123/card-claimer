@@ -7,7 +7,7 @@ interface CrossPromoBannerProps {
   className?: string;
 }
 
-const HOT_WHEELS_SITE_URL = "https://card-claimer-main.vercel.app";
+const HOT_WHEELS_SITE_URL = "https://yanks-diecast.vercel.app";
 
 const CrossPromoBanner: React.FC<CrossPromoBannerProps> = ({ className }) => {
   return (
