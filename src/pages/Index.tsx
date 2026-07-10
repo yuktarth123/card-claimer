@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import WhatsAppBanner from "@/components/WhatsAppBanner";
+import CrossPromoBanner from "@/components/CrossPromoBanner";
 import PwaInstallBanner from "@/components/PwaInstallBanner";
 import { cn } from "@/lib/utils";
 
@@ -371,7 +372,8 @@ const Index = () => {
       </header>
 
       <main className="container py-6">
-        <WhatsAppBanner className="mb-6" />
+        <WhatsAppBanner className="mb-3" />
+        <CrossPromoBanner className="mb-6" />
 
         {/* Search */}
         <div className="relative mb-3">
