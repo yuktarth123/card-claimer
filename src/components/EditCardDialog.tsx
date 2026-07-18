@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 import { CURRENCY, CARD_CONDITIONS, ITEM_TYPES, PREORDER_MIN_DAYS, PREORDER_MAX_DAYS } from "@/config";
 import { AdditionalPhotosField } from "@/components/AdditionalPhotosField";
+import { prepareVideoForUpload, isPayloadTooLargeError } from "@/lib/videoUpload";
 
 type Card = Database["public"]["Tables"]["cards"]["Row"];
 
@@ -47,6 +48,7 @@ export function EditCardDialog({ card, open, onOpenChange, onSave }: EditCardDia
   const [extraPhotoUrls, setExtraPhotoUrls] = useState<string[]>([]);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
+  const [isProcessingVideo, setIsProcessingVideo] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   const photoFileRef = useRef<HTMLInputElement>(null);
@@ -92,14 +94,26 @@ export function EditCardDialog({ card, open, onOpenChange, onSave }: EditCardDia
     setPhotoPreview(url);
   };
 
-  const handleVideoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleVideoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
-    setVideoFile(file);
-    if (file) {
-      setVideoPreview(URL.createObjectURL(file));
-    } else {
+    if (!file) {
+      setVideoFile(null);
       setVideoPreview(card?.video_url || null);
+      return;
     }
+
+    setIsProcessingVideo(true);
+    const { file: prepared, error } = await prepareVideoForUpload(file);
+    setIsProcessingVideo(false);
+
+    if (error) {
+      toast.error(error);
+      if (videoFileRef.current) videoFileRef.current.value = "";
+      return;
+    }
+
+    setVideoFile(prepared);
+    setVideoPreview(URL.createObjectURL(prepared!));
   };
 
   const handleRemovePhoto = () => {
@@ -156,7 +170,7 @@ export function EditCardDialog({ card, open, onOpenChange, onSave }: EditCardDia
       const videoPath = `card-videos/${Date.now()}-${Math.random().toString(36).slice(2)}-${videoFile.name}`;
       const { error: uploadError } = await supabase.storage.from("card-videos").upload(videoPath, videoFile);
       if (uploadError) {
-        toast.error("Failed to upload new video.");
+        toast.error(isPayloadTooLargeError(uploadError) ? "Video is too large for upload (max 50MB). Try a shorter clip." : "Failed to upload new video.");
         setIsSaving(false);
         return;
       }
@@ -398,9 +412,14 @@ export function EditCardDialog({ card, open, onOpenChange, onSave }: EditCardDia
                 type="button"
                 variant="outline"
                 onClick={() => videoFileRef.current?.click()}
+                disabled={isProcessingVideo}
                 className="w-full"
               >
-                <Video className="w-4 h-4 mr-2" /> Record Video / Choose Video
+                {isProcessingVideo ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Compressing video…</>
+                ) : (
+                  <><Video className="w-4 h-4 mr-2" /> Record Video / Choose Video</>
+                )}
               </Button>
               <input
                 ref={videoFileRef}
@@ -417,7 +436,7 @@ export function EditCardDialog({ card, open, onOpenChange, onSave }: EditCardDia
           <Button onClick={() => onOpenChange(false)} variant="outline">
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={isSaving}>
+          <Button onClick={handleSave} disabled={isSaving || isProcessingVideo}>
             {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
             Save Changes
           </Button>

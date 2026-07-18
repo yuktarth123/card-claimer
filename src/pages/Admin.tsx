@@ -24,6 +24,7 @@ import { Switch } from "@/components/ui/switch";
 import { useAdminSession } from "@/hooks/useAdminSession";
 import { AdminLogin } from "@/components/AdminLogin";
 import { cn } from "@/lib/utils";
+import { prepareVideoForUpload, isPayloadTooLargeError } from "@/lib/videoUpload";
 
 type DbCard = Database["public"]["Tables"]["cards"]["Row"];
 type DbClaim = Database["public"]["Tables"]["claims"]["Row"];
@@ -54,6 +55,7 @@ const Admin = () => {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const [existingVideoUrl, setExistingVideoUrl] = useState<string | null>(null);
+  const [isProcessingVideo, setIsProcessingVideo] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [isUpdatingConditions, setIsUpdatingConditions] = useState(false);
   const photoFileRef = useRef<HTMLInputElement>(null);
@@ -174,15 +176,27 @@ const Admin = () => {
     setPhotoPreview(url);
   };
 
-  const onPickVideo = (file: File | null) => {
-    setVideoFile(file);
-    setExistingVideoUrl(null);
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setVideoPreview(url);
-    } else {
+  const onPickVideo = async (file: File | null) => {
+    if (!file) {
+      setVideoFile(null);
+      setExistingVideoUrl(null);
       setVideoPreview(null);
+      return;
     }
+
+    setExistingVideoUrl(null);
+    setIsProcessingVideo(true);
+    const { file: prepared, error } = await prepareVideoForUpload(file);
+    setIsProcessingVideo(false);
+
+    if (error) {
+      toast.error(error);
+      if (videoFileRef.current) videoFileRef.current.value = "";
+      return;
+    }
+
+    setVideoFile(prepared);
+    setVideoPreview(URL.createObjectURL(prepared!));
   };
 
   const runSearch = async () => {
@@ -322,7 +336,7 @@ const Admin = () => {
         upsert: false,
       });
       if (upErr) {
-        toast.error("Video upload failed");
+        toast.error(isPayloadTooLargeError(upErr) ? "Video is too large for upload (max 50MB). Try a shorter clip." : "Video upload failed");
         setPublishing(false);
         return;
       }
@@ -654,9 +668,14 @@ const Admin = () => {
                     type="button"
                     variant="outline"
                     onClick={() => videoFileRef.current?.click()}
+                    disabled={isProcessingVideo}
                     className="flex-1 min-w-[140px]"
                   >
-                    <Video className="w-4 h-4 mr-2" /> Record Video / Choose Video
+                    {isProcessingVideo ? (
+                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Compressing video…</>
+                    ) : (
+                      <><Video className="w-4 h-4 mr-2" /> Record Video / Choose Video</>
+                    )}
                   </Button>
                   <input
                     ref={videoFileRef}
@@ -746,7 +765,7 @@ const Admin = () => {
 
             <Button
               onClick={publish}
-              disabled={publishing}
+              disabled={publishing || isProcessingVideo}
               className="w-full h-12 gradient-gold text-primary-foreground font-bold text-base"
             >
               {publishing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Upload className="w-4 h-4 mr-2" />}

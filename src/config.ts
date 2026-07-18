@@ -33,4 +33,9 @@ export const ITEM_TYPES = [
   { value: "accessory", label: "Accessory / Other" },
 ] as const;
 
+// Matches the Supabase project's storage upload limit (free-tier default).
+// Videos are compressed client-side before upload to try to stay under this,
+// but very long/high-res clips can still exceed it after compression.
+export const MAX_VIDEO_SIZE_BYTES = 50 * 1024 * 1024;
+
 // SALE_START_TIME is now managed via the Admin UI and stored in Supabase.
