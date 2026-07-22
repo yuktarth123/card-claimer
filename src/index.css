@@ -78,8 +78,12 @@ All colors MUST be HSL.
     font-feature-settings: "ss01", "cv11";
     background-image:
       radial-gradient(circle at 15% 10%, hsl(220 90% 56% / 0.12), transparent 45%),
-      radial-gradient(circle at 85% 90%, hsl(350 85% 55% / 0.10), transparent 45%);
-    background-attachment: fixed;
+      radial-gradient(circle at 85% 90%, hsl(350 85% 55% / 0.10), transparent 45%),
+      linear-gradient(hsl(240 25% 7% / 0.88), hsl(240 25% 7% / 0.88)),
+      url('/bg-pattern.jpg');
+    background-repeat: no-repeat, no-repeat, no-repeat, repeat;
+    background-size: auto, auto, auto, 700px;
+    background-attachment: fixed, fixed, fixed, fixed;
   }
 }
 
