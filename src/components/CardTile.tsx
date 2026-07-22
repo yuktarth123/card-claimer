@@ -246,7 +246,7 @@ export function CardTile({ card, myClaims, onClaim, onUnclaim, disabled, isSaleL
 
         <div className="p-3 space-y-2">
           <div>
-            <h3 className="font-bold leading-tight truncate">{card.name}</h3>
+            <h3 className="font-bold leading-tight">{card.name}</h3>
             {card.item_type !== "card" && (
               <p className="text-xs font-semibold text-secondary-foreground truncate">
                 {ITEM_TYPES.find((t) => t.value === card.item_type)?.label ?? card.item_type}
