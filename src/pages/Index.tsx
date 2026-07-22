@@ -306,10 +306,12 @@ const Index = () => {
   return (
     <div className="min-h-screen pb-28">
       <NameGate
-        open={!name}
+        open={!name || !phone}
+        initialName={name}
         onSubmit={(n, p) => {
+          const wasReturning = Boolean(name);
           setIdentity(n, p);
-          toast.success(`Welcome, ${n}! 👋`, {
+          toast.success(wasReturning ? `Thanks, ${n}!` : `Welcome, ${n}! 👋`, {
             description: isSaleLive ? "The sale is live — start claiming!" : "Get ready, the sale starts soon.",
           });
         }}
