@@ -267,13 +267,13 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  const base64 = (body.image || "").split(",").pop(); // strip a data: URL prefix if present
-  if (!base64) {
-    return new Response(JSON.stringify({ error: "Missing 'image' (base64 JPEG)." }), {
+  if (typeof body.image !== "string" || !body.image) {
+    return new Response(JSON.stringify({ error: "Missing or invalid 'image' (must be a base64 JPEG string)." }), {
       status: 400,
       headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
     });
   }
+  const base64 = body.image.split(",").pop(); // strip a data: URL prefix if present
 
   const model = Deno.env.get("GEMINI_VISION_MODEL") || "gemini-2.5-flash";
 
