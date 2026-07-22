@@ -67,6 +67,7 @@ export type Database = {
           is_preorder: boolean
           is_vintage: boolean
           item_type: string
+          language: string
           name: string
           photo_url: string | null
           photo_urls: string[]
@@ -89,6 +90,7 @@ export type Database = {
           is_preorder?: boolean
           is_vintage?: boolean
           item_type?: string
+          language?: string
           name: string
           photo_url?: string | null
           photo_urls?: string[]
@@ -111,6 +113,7 @@ export type Database = {
           is_preorder?: boolean
           is_vintage?: boolean
           item_type?: string
+          language?: string
           name?: string
           photo_url?: string | null
           photo_urls?: string[]

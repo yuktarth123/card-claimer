@@ -35,6 +35,7 @@ export function EditCardDialog({ card, open, onOpenChange, onSave }: EditCardDia
   const [cardNumber, setCardNumber] = useState("");
   const [rarity, setRarity] = useState("");
   const [category, setCategory] = useState("");
+  const [language, setLanguage] = useState("English");
   const [isPreorder, setIsPreorder] = useState(false);
   const [isVintage, setIsVintage] = useState(false);
   const [price, setPrice] = useState("");
@@ -62,6 +63,7 @@ export function EditCardDialog({ card, open, onOpenChange, onSave }: EditCardDia
       setCardNumber(card.card_number || "");
       setRarity(card.rarity || "");
       setCategory(card.category || "");
+      setLanguage(card.language || "English");
       setIsPreorder(card.is_preorder);
       setIsVintage(card.is_vintage);
       setPrice(String(card.price));
@@ -189,6 +191,7 @@ export function EditCardDialog({ card, open, onOpenChange, onSave }: EditCardDia
         card_number: itemType === "card" ? cardNumber.trim() || null : null,
         rarity: itemType === "card" ? rarity.trim() || null : null,
         category: category.trim() || null,
+        language: language.trim() || "English",
         is_preorder: isPreorder,
         is_vintage: isVintage,
         price: parsedPrice,
@@ -256,6 +259,11 @@ export function EditCardDialog({ card, open, onOpenChange, onSave }: EditCardDia
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="category" className="text-right">Category</Label>
             <Input id="category" value={category} onChange={(e) => setCategory(e.target.value)} className="col-span-3" placeholder="Booster Box, ETB..." />
+          </div>
+
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="language" className="text-right">Language</Label>
+            <Input id="language" value={language} onChange={(e) => setLanguage(e.target.value)} className="col-span-3" placeholder="English" />
           </div>
 
           <div className="grid grid-cols-4 items-center gap-4">

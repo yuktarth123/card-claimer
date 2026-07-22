@@ -23,3 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 .dyad/
+
+# Local Supabase CLI cache (machine-specific link state)
+supabase/.temp/

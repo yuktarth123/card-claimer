@@ -19,6 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { SaleManager } from "@/components/SaleManager";
 import { SiteWideSaleManager } from "@/components/SiteWideSaleManager";
 import { SalesHistory } from "@/components/SalesHistory";
+import { CardScanner, ScannedCard } from "@/components/CardScanner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { useAdminSession } from "@/hooks/useAdminSession";
@@ -31,6 +32,24 @@ type DbClaim = Database["public"]["Tables"]["claims"]["Row"];
 type PriceFilter = "all" | "under-100" | "100-500" | "500-1000" | "1000-plus";
 type SortOrder = "newest" | "price-asc" | "price-desc";
 
+// Best-effort match between a vision-identified card and the TCG API's
+// search results for that name -- prefers an exact number match (most
+// specific), then a set-name match, else the API's own top result (already
+// ordered by -set.releaseDate).
+function pickBestTcgMatch(results: TCGCard[], visionSet: string | null, visionNumber: string | null): TCGCard | null {
+  if (results.length === 0) return null;
+  if (visionNumber) {
+    const byNumber = results.find((r) => r.number === visionNumber);
+    if (byNumber) return byNumber;
+  }
+  if (visionSet) {
+    const setKey = visionSet.toLowerCase();
+    const bySet = results.find((r) => r.set?.name?.toLowerCase().includes(setKey));
+    if (bySet) return bySet;
+  }
+  return results[0];
+}
+
 const Admin = () => {
   const { session, loading: authLoading } = useAdminSession();
   const [cards, setCards] = useState<DbCard[]>([]);
@@ -41,6 +60,7 @@ const Admin = () => {
   const [cardNumber, setCardNumber] = useState("");
   const [rarity, setRarity] = useState("");
   const [category, setCategory] = useState("");
+  const [language, setLanguage] = useState("English");
   const [isPreorder, setIsPreorder] = useState(false);
   const [isVintage, setIsVintage] = useState(false);
   const [price, setPrice] = useState("");
@@ -67,6 +87,7 @@ const Admin = () => {
   const [results, setResults] = useState<TCGCard[]>([]);
   const [selectedTcg, setSelectedTcg] = useState<TCGCard | null>(null);
   const [tcgImageUrl, setTcgImageUrl] = useState<string | null>(null);
+  const [scannerOpen, setScannerOpen] = useState(false);
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<DbCard | null>(null);
@@ -158,6 +179,15 @@ const Admin = () => {
     Array.from(new Set(cards.map((c) => c[key]).filter(Boolean))) as string[];
   const knownCardSets = useMemo(() => distinct("card_set"), [cards]);
   const knownCategories = useMemo(() => distinct("category"), [cards]);
+  const knownLanguages = useMemo(() => {
+    const seen = new Set(distinct("language"));
+    // Always offer these regardless of what's already been listed, since
+    // they're this shop's common non-English stock (Japanese/Chinese bulk
+    // lots seen in Live Listings) even before any card of that language has
+    // been added through this form yet.
+    ["English", "Japanese", "Chinese", "Korean"].forEach((l) => seen.add(l));
+    return Array.from(seen);
+  }, [cards]);
 
   const onPickPhoto = (file: File | null) => {
     setPhotoFile(file);
@@ -213,6 +243,7 @@ const Admin = () => {
     setCardSet(c.set?.name ?? "");
     setCardNumber(c.number ?? "");
     setRarity(c.rarity ?? "");
+    setLanguage("English"); // pokemontcg.io only indexes English prints
     setTcgImageUrl(c.images?.large || c.images?.small || null);
     if (!photoFile && !existingPhotoUrl && (c.images?.large || c.images?.small)) {
       onPickPhotoUrl(c.images.large || c.images.small!);
@@ -233,6 +264,51 @@ const Admin = () => {
     } else {
       toast.info("No price found for this card from the TCG API.");
     }
+  };
+
+  const handleScanned = async (scanned: ScannedCard) => {
+    setSearching(true);
+    const results = await searchPokemonCards(scanned.name);
+    setSearching(false);
+
+    const isEnglish = !scanned.language || scanned.language.toLowerCase() === "english";
+    // pokemontcg.io only carries English prints. For any other language the
+    // API's "best" match is a different physical release entirely (different
+    // set, card number, artwork, and price) -- not just a wrong price, so we
+    // don't apply that match at all and instead keep what the photo itself
+    // told us (name translated for readability, but set/number as printed
+    // on THIS card).
+    const match = isEnglish ? pickBestTcgMatch(results, scanned.set, scanned.number) : null;
+
+    if (match) {
+      pickTcg(match);
+    } else {
+      setName(scanned.name);
+      setCardSet(scanned.set ?? "");
+      setCardNumber(scanned.number ?? "");
+      setLanguage(scanned.language || "English");
+      if (isEnglish) {
+        toast.info("Identified the card, but couldn't find it in the TCG database — price and set need a manual check.");
+      } else if (scanned.priceSuggestionInr && scanned.priceSuggestionSource === "gemini_search") {
+        // Only the cited web-search estimate gets pre-filled -- the
+        // Japanese-proxy fallback has been observed matching the wrong
+        // print/rarity (no way to confirm it found the same parallel), so
+        // that one is shown in the scanner as a reference only, never
+        // written into the form. Still always paired with a toast making
+        // clear this needs verifying either way.
+        setPrice(scanned.priceSuggestionInr.toFixed(0));
+        toast.warning(`${scanned.priceSuggestionLabel}: ${CURRENCY}${scanned.priceSuggestionInr.toFixed(0)} — verify before publishing, set/card # also need a manual check.`);
+      } else {
+        toast.warning(`${scanned.language} print — the TCG database only has English-print data, so set/card #/price weren't auto-matched. Enter them manually.`);
+      }
+    }
+
+    // Applied last (and unconditionally) so the real photo of the physical
+    // card always wins over any stock image pickTcg/setDefault might have
+    // just set -- setPhotoFile above is stale within this same tick, so
+    // ordering here (not a guard inside pickTcg) is what makes this correct.
+    const photoFile = new File([scanned.photoBlob], `scan-${Date.now()}.jpg`, { type: "image/jpeg" });
+    onPickPhoto(photoFile);
   };
 
   // Only the per-listing fields reset after publishing -- Condition usually
@@ -272,6 +348,7 @@ const Admin = () => {
     setRarity(c.rarity ?? "");
     setCategory(c.category ?? "");
     setCondition(c.condition ?? CARD_CONDITIONS[0]);
+    setLanguage(c.language || "English");
     setName(c.name);
     setIsPreorder(c.is_preorder);
     setIsVintage(c.is_vintage);
@@ -353,6 +430,7 @@ const Admin = () => {
       category: category.trim() || null,
       is_preorder: isPreorder,
       is_vintage: isVintage,
+      language: language.trim() || "English",
       price: parsedPrice,
       sale_price: parsedSalePrice,
       condition,
@@ -558,6 +636,9 @@ const Admin = () => {
                     {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                   </Button>
                 </div>
+                <Button type="button" variant="outline" onClick={() => setScannerOpen(true)} className="w-full">
+                  <Camera className="w-4 h-4 mr-2" /> Scan Card with Camera
+                </Button>
                 {results.length > 0 && (
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-64 overflow-y-auto p-1 border border-border rounded-lg">
                     {results.map((c) => (
@@ -719,6 +800,10 @@ const Admin = () => {
                 <ComboSelect value={category} onChange={setCategory} options={knownCategories} placeholder="Booster Box, ETB, Tin..." />
               </div>
               <div>
+                <Label>Language</Label>
+                <ComboSelect value={language} onChange={setLanguage} options={knownLanguages} placeholder="English" />
+              </div>
+              <div>
                 <Label>Price ({CURRENCY})</Label>
                 <Input type="number" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="500" />
               </div>
@@ -854,6 +939,11 @@ const Admin = () => {
                               Vintage
                             </span>
                           )}
+                          {c.language && c.language !== "English" && (
+                            <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full align-middle bg-secondary text-secondary-foreground">
+                              {c.language}
+                            </span>
+                          )}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {c.card_set || "—"} • {CURRENCY}{Number(c.price).toFixed(0)} • {c.condition || "N/A"}
@@ -933,6 +1023,8 @@ const Admin = () => {
           onSave={fetchCards}
         />
       )}
+
+      <CardScanner open={scannerOpen} onOpenChange={setScannerOpen} onIdentified={handleScanned} />
     </div>
   );
 };

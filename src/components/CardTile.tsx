@@ -216,11 +216,16 @@ export function CardTile({ card, myClaims, onClaim, onUnclaim, disabled, isSaleL
               <span className="truncate">{soldOut ? "Out of stock" : `${card.quantity_available} left`}</span>
             </Badge>
           </div>
-          {(myTotalClaimed > 0 || card.is_vintage) && (
+          {(myTotalClaimed > 0 || card.is_vintage || (card.language && card.language !== "English")) && (
             <div className="absolute top-2 left-2 max-w-[calc(50%-10px)] flex flex-col items-start gap-1">
               {card.is_vintage && (
                 <Badge className="max-w-full border-0 shadow-md font-bold bg-amber-900 text-amber-100">
                   <History className="w-3 h-3 mr-1 shrink-0" /> <span className="truncate">Vintage</span>
+                </Badge>
+              )}
+              {card.language && card.language !== "English" && (
+                <Badge className="max-w-full bg-card text-foreground border border-border shadow-md">
+                  <span className="truncate">{card.language}</span>
                 </Badge>
               )}
               {myTotalClaimed > 0 && (
