@@ -15,8 +15,12 @@
 //
 // Deploy:
 //   supabase functions deploy identify-card --project-ref govervcxumkbpmnnotpr
-// Secrets (required):
+// Secrets (required -- one of these two):
 //   supabase secrets set GEMINI_API_KEY=your-key --project-ref govervcxumkbpmnnotpr
+//   supabase secrets set GEMINI_API_KEYS=key-one,key-two,key-three --project-ref govervcxumkbpmnnotpr
+//   GEMINI_API_KEYS (comma or newline separated) takes priority if both are set. Each
+//   Gemini free-tier key has its own ~20 requests/minute cap -- when a key hits that
+//   limit mid-scan, the next key in the list is tried automatically before giving up.
 // Secrets (optional, defaults to gemini-2.5-flash):
 //   supabase secrets set GEMINI_VISION_MODEL=gemini-2.5-flash --project-ref govervcxumkbpmnnotpr
 // Secrets (optional -- enables the Japanese-proxy price fallback):
@@ -65,6 +69,64 @@ Respond with ONLY a JSON object, no markdown fences, no extra text, matching exa
 
 Do not include any text outside the JSON object.`;
 
+function loadGeminiKeys(): string[] {
+  const multi = Deno.env.get("GEMINI_API_KEYS");
+  if (multi) {
+    return multi.split(/[,\n]/).map((k) => k.trim()).filter(Boolean);
+  }
+  const single = Deno.env.get("GEMINI_API_KEY");
+  return single ? [single] : [];
+}
+
+function isRateLimitError(message: string): boolean {
+  return /quota|rate.?limit|RESOURCE_EXHAUSTED|429/i.test(message);
+}
+
+interface GeminiCandidate {
+  content?: { parts?: { text?: string }[] };
+  groundingMetadata?: { groundingChunks?: { web?: { uri?: string } }[] };
+}
+interface GeminiApiResponse {
+  candidates?: GeminiCandidate[];
+  error?: { message?: string };
+}
+
+// Tries each key in order, but only moves to the next one when the failure
+// looks like a per-key rate limit -- any other error (bad request, model
+// name typo, etc.) would fail identically on every key, so we return
+// immediately instead of burning through the whole list pointlessly.
+async function callGemini(
+  keys: string[],
+  model: string,
+  payload: Record<string, unknown>,
+): Promise<{ json: GeminiApiResponse } | { error: string }> {
+  if (keys.length === 0) return { error: "No Gemini API key configured." };
+
+  let lastError = "Unknown error";
+  for (const key of keys) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json: GeminiApiResponse = await res.json();
+      if (res.ok && !json.error) {
+        return { json };
+      }
+      lastError = json.error?.message || `HTTP ${res.status}`;
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : String(err);
+    }
+    if (!isRateLimitError(lastError)) {
+      return { error: lastError };
+    }
+    // else: this key is rate-limited, loop continues to the next one.
+  }
+  return { error: lastError };
+}
+
 function extractJson<T>(text: string): T | null {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
   const raw = (fenced ? fenced[1] : text).trim();
@@ -88,28 +150,19 @@ function parseIdentity(text: string): IdentifyResult | null {
   };
 }
 
-async function identifyCard(apiKey: string, model: string, imageBase64: string): Promise<IdentifyResult | { error: string }> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      contents: [{
-        parts: [
-          { text: IDENTIFY_PROMPT },
-          { inline_data: { mime_type: "image/jpeg", data: imageBase64 } },
-        ],
-      }],
-      generationConfig: { temperature: 0 },
-    }),
+async function identifyCard(keys: string[], model: string, imageBase64: string): Promise<IdentifyResult | { error: string }> {
+  const outcome = await callGemini(keys, model, {
+    contents: [{
+      parts: [
+        { text: IDENTIFY_PROMPT },
+        { inline_data: { mime_type: "image/jpeg", data: imageBase64 } },
+      ],
+    }],
+    generationConfig: { temperature: 0 },
   });
+  if ("error" in outcome) return { error: outcome.error };
 
-  const json = await res.json();
-  if (!res.ok || json.error) {
-    return { error: json.error?.message || "Gemini API error" };
-  }
-
-  const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
+  const text = outcome.json.candidates?.[0]?.content?.parts?.[0]?.text;
   const result = text ? parseIdentity(text) : null;
   return result || { error: "Could not parse a card identity from the model's response." };
 }
@@ -127,7 +180,7 @@ interface StepDebug {
 // from the API's own groundingMetadata (structural citations), never from
 // text the model wrote itself, since a model-authored URL could be invented.
 async function searchPriceWithGemini(
-  apiKey: string,
+  keys: string[],
   model: string,
   card: { name: string; set: string | null; number: string | null; language: string },
 ): Promise<{ result: PriceSuggestion | null; debug: StepDebug }> {
@@ -149,23 +202,16 @@ After searching, respond with ONLY a JSON object, no markdown fences, no extra t
 Do not include any text outside the JSON object.`;
 
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        tools: [{ google_search: {} }],
-        generationConfig: { temperature: 0 },
-      }),
+    const outcome = await callGemini(keys, model, {
+      contents: [{ parts: [{ text: prompt }] }],
+      tools: [{ google_search: {} }],
+      generationConfig: { temperature: 0 },
     });
-
-    const json = await res.json();
-    if (!res.ok || json.error) {
-      return { result: null, debug: { step: "gemini_search", ok: false, detail: json.error?.message || `HTTP ${res.status}` } };
+    if ("error" in outcome) {
+      return { result: null, debug: { step: "gemini_search", ok: false, detail: outcome.error } };
     }
 
-    const candidate = json.candidates?.[0];
+    const candidate = outcome.json.candidates?.[0];
     const text = candidate?.content?.parts?.find((p: { text?: string }) => typeof p.text === "string")?.text;
     const parsed = text ? extractJson<{ amountUsd?: number; confident?: boolean; note?: string }>(text) : null;
 
@@ -249,9 +295,9 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  const apiKey = Deno.env.get("GEMINI_API_KEY");
-  if (!apiKey) {
-    return new Response(JSON.stringify({ error: "GEMINI_API_KEY is not configured on the server." }), {
+  const geminiKeys = loadGeminiKeys();
+  if (geminiKeys.length === 0) {
+    return new Response(JSON.stringify({ error: "GEMINI_API_KEY (or GEMINI_API_KEYS) is not configured on the server." }), {
       status: 500,
       headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
     });
@@ -278,7 +324,7 @@ Deno.serve(async (req: Request) => {
   const model = Deno.env.get("GEMINI_VISION_MODEL") || "gemini-2.5-flash";
 
   try {
-    const identity = await identifyCard(apiKey, model, base64);
+    const identity = await identifyCard(geminiKeys, model, base64);
     if ("error" in identity) {
       return new Response(JSON.stringify({ error: identity.error }), {
         status: 502,
@@ -295,7 +341,7 @@ Deno.serve(async (req: Request) => {
     // pokemontcg.io client-side, and there's no point pricing a card we
     // couldn't even identify.
     if (!identity.uncertain && identity.name && !isEnglish) {
-      const searchOutcome = await searchPriceWithGemini(apiKey, model, {
+      const searchOutcome = await searchPriceWithGemini(geminiKeys, model, {
         name: identity.name,
         set: identity.set,
         number: identity.number,
