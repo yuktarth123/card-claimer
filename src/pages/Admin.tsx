@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Camera, Upload, Search, Trash2, Plus, X, Loader2, Lock, Clock, Edit, Video, Wrench, Filter, ArrowDownWideNarrow, ArrowUpWideNarrow, CheckCircle2, Gift, Trophy, PackageCheck, LogOut, Copy } from "lucide-react";
-import { CURRENCY, USD_TO_INR_RATE, SELLER_NAME, CARD_CONDITIONS, ITEM_TYPES, PREORDER_MIN_DAYS, PREORDER_MAX_DAYS } from "@/config";
+import { CURRENCY, SELLER_NAME, CARD_CONDITIONS, ITEM_TYPES, PREORDER_MIN_DAYS, PREORDER_MAX_DAYS } from "@/config";
+import { getCachedUsdToInrRate, refreshUsdToInrRate } from "@/lib/fxRate";
 import { ComboSelect } from "@/components/ComboSelect";
 import { SaleTimeManager } from "@/components/SaleTimeManager";
 import AppLogo from "@/components/AppLogo";
@@ -175,6 +176,10 @@ const Admin = () => {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    refreshUsdToInrRate();
+  }, []);
+
   const distinct = (key: keyof DbCard) =>
     Array.from(new Set(cards.map((c) => c[key]).filter(Boolean))) as string[];
   const knownCardSets = useMemo(() => distinct("card_set"), [cards]);
@@ -258,7 +263,7 @@ const Admin = () => {
     }
 
     if (usdPrice) {
-      const inrPrice = usdPrice * USD_TO_INR_RATE;
+      const inrPrice = usdPrice * getCachedUsdToInrRate();
       setPrice(inrPrice.toFixed(0));
       toast.success(`Price auto-filled: ${CURRENCY}${inrPrice.toFixed(0)}`);
     } else {

@@ -1,10 +1,11 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Camera, Loader2, RotateCcw, Check } from "lucide-react";
 import { identifyCardFromImage, CardIdentity } from "@/lib/cardVision";
 import { toast } from "sonner";
-import { CURRENCY, USD_TO_INR_RATE } from "@/config";
+import { CURRENCY } from "@/config";
+import { getCachedUsdToInrRate, refreshUsdToInrRate } from "@/lib/fxRate";
 
 export interface ScannedCard {
   name: string;
@@ -44,6 +45,10 @@ export function CardScanner({ open, onOpenChange, onIdentified }: CardScannerPro
   const [stage, setStage] = useState<Stage>("camera");
   const [capturedDataUrl, setCapturedDataUrl] = useState<string | null>(null);
   const [identity, setIdentity] = useState<CardIdentity | null>(null);
+
+  useEffect(() => {
+    if (open) refreshUsdToInrRate();
+  }, [open]);
 
   // Opens the phone's own camera app (via the OS photo picker) instead of a
   // getUserMedia live preview -- browser video streams can't match a native
@@ -94,7 +99,7 @@ export function CardScanner({ open, onOpenChange, onIdentified }: CardScannerPro
       set: identity.set,
       number: identity.number,
       language: identity.language,
-      priceSuggestionInr: identity.priceSuggestion ? identity.priceSuggestion.amountUsd * USD_TO_INR_RATE : null,
+      priceSuggestionInr: identity.priceSuggestion ? identity.priceSuggestion.amountUsd * getCachedUsdToInrRate() : null,
       priceSuggestionLabel: identity.priceSuggestion?.label ?? null,
       priceSuggestionSource: identity.priceSuggestion?.source ?? null,
       photoBlob: blob,
@@ -171,7 +176,7 @@ export function CardScanner({ open, onOpenChange, onIdentified }: CardScannerPro
               {identity.priceSuggestion && (
                 <div className="text-xs bg-muted/50 rounded-lg p-2 mt-1 text-left space-y-1">
                   <p className="font-semibold text-foreground">
-                    {identity.priceSuggestion.label}: {CURRENCY}{(identity.priceSuggestion.amountUsd * USD_TO_INR_RATE).toFixed(0)}
+                    {identity.priceSuggestion.label}: {CURRENCY}{(identity.priceSuggestion.amountUsd * getCachedUsdToInrRate()).toFixed(0)}
                     <span className="text-muted-foreground font-normal"> (${identity.priceSuggestion.amountUsd.toFixed(2)})</span>
                   </p>
                   {identity.priceSuggestion.note && (
