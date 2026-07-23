@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Camera, Loader2, RotateCcw, Check } from "lucide-react";
@@ -30,55 +30,43 @@ interface CardScannerProps {
 
 type Stage = "camera" | "identifying" | "confirm" | "uncertain";
 
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error || new Error("Could not read the photo file."));
+    reader.readAsDataURL(file);
+  });
+}
+
 export function CardScanner({ open, onOpenChange, onIdentified }: CardScannerProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const [stage, setStage] = useState<Stage>("camera");
-  const [cameraError, setCameraError] = useState<string | null>(null);
   const [capturedDataUrl, setCapturedDataUrl] = useState<string | null>(null);
   const [identity, setIdentity] = useState<CardIdentity | null>(null);
 
-  const stopStream = () => {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
+  // Opens the phone's own camera app (via the OS photo picker) instead of a
+  // getUserMedia live preview -- browser video streams can't match a native
+  // camera's autofocus/macro handling, which matters a lot at the close
+  // range card scanning needs. This is the same technique the rest of the
+  // app already uses for photo capture (Admin's "Take Photo" button).
+  const openCamera = () => {
+    photoInputRef.current?.click();
   };
 
-  useEffect(() => {
-    if (!open) {
-      stopStream();
+  const handleFileChange = async (file: File | null) => {
+    if (!file) return;
+
+    let dataUrl: string;
+    try {
+      dataUrl = await readFileAsDataUrl(file);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not read the photo.");
       return;
     }
 
-    setStage("camera");
-    setCameraError(null);
-    setCapturedDataUrl(null);
-    setIdentity(null);
-
-    navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: "environment" } })
-      .then((stream) => {
-        streamRef.current = stream;
-        if (videoRef.current) videoRef.current.srcObject = stream;
-      })
-      .catch(() => {
-        setCameraError("Couldn't access the camera. Check permissions and try again.");
-      });
-
-    return () => stopStream();
-  }, [open]);
-
-  const capture = async () => {
-    const video = videoRef.current;
-    if (!video || !video.videoWidth) return;
-
-    const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext("2d")!.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
     setCapturedDataUrl(dataUrl);
     setStage("identifying");
-    stopStream();
 
     try {
       const result = await identifyCardFromImage(dataUrl);
@@ -94,13 +82,7 @@ export function CardScanner({ open, onOpenChange, onIdentified }: CardScannerPro
     setStage("camera");
     setCapturedDataUrl(null);
     setIdentity(null);
-    navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: "environment" } })
-      .then((stream) => {
-        streamRef.current = stream;
-        if (videoRef.current) videoRef.current.srcObject = stream;
-      })
-      .catch(() => setCameraError("Couldn't access the camera. Check permissions and try again."));
+    if (photoInputRef.current) photoInputRef.current.value = "";
   };
 
   const confirm = async () => {
@@ -118,10 +100,17 @@ export function CardScanner({ open, onOpenChange, onIdentified }: CardScannerPro
       photoBlob: blob,
     });
     onOpenChange(false);
+    retake();
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) retake();
+        onOpenChange(next);
+      }}
+    >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -129,15 +118,22 @@ export function CardScanner({ open, onOpenChange, onIdentified }: CardScannerPro
           </DialogTitle>
         </DialogHeader>
 
-        {cameraError && <p className="text-sm text-destructive">{cameraError}</p>}
+        <input
+          ref={photoInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={(e) => handleFileChange(e.target.files?.[0] || null)}
+        />
 
-        {stage === "camera" && !cameraError && (
+        {stage === "camera" && (
           <div className="space-y-3">
-            <div className="relative aspect-[3/4] max-w-[280px] mx-auto rounded-xl overflow-hidden border border-border bg-black">
-              <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-            </div>
-            <Button onClick={capture} className="w-full h-11">
-              <Camera className="w-4 h-4 mr-2" /> Capture
+            <p className="text-sm text-muted-foreground text-center">
+              Opens your phone's camera app for a sharper, better-focused photo than an in-browser preview can manage.
+            </p>
+            <Button onClick={openCamera} className="w-full h-11">
+              <Camera className="w-4 h-4 mr-2" /> Take Photo
             </Button>
           </div>
         )}
