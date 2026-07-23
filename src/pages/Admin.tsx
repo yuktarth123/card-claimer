@@ -288,7 +288,10 @@ const Admin = () => {
     if (match) {
       pickTcg(match);
     } else {
-      setName(scanned.name);
+      // Baked into the listing title itself (not just Rarity) so it's
+      // visible at a glance in the listings list, matching how these have
+      // been named by hand before -- e.g. "Sawsbuck (Poke Ball Pattern)".
+      setName(scanned.printVariant ? `${scanned.name} (${scanned.printVariant})` : scanned.name);
       setCardSet(scanned.set ?? "");
       setCardNumber(scanned.number ?? "");
       setLanguage(scanned.language || "English");

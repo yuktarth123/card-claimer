@@ -166,7 +166,15 @@ export function CardScanner({ open, onOpenChange, onIdentified }: CardScannerPro
               </div>
             )}
             <div className="text-sm text-center space-y-0.5">
-              <p className="font-semibold">{identity.name}</p>
+              <p className="font-semibold">
+                {/* Only non-English scans skip TCG matching and use this name
+                    as-is (see Admin.tsx) -- for English cards the eventual
+                    name may still come from a TCG database match instead, so
+                    showing the combined form here would be misleading. */}
+                {identity.printVariant && identity.language && identity.language.toLowerCase() !== "english"
+                  ? `${identity.name} (${identity.printVariant})`
+                  : identity.name}
+              </p>
               <p className="text-muted-foreground">
                 {identity.set || "Set unknown"} {identity.number ? `• #${identity.number}` : ""}
               </p>
