@@ -292,6 +292,10 @@ const Admin = () => {
       setCardSet(scanned.set ?? "");
       setCardNumber(scanned.number ?? "");
       setLanguage(scanned.language || "English");
+      // Not from the trusted TCG database here (no match found), so a
+      // detected stamp/pattern is just as informational as everything else
+      // in this branch -- still needs the same manual verification.
+      if (scanned.printVariant) setRarity(scanned.printVariant);
       if (isEnglish) {
         toast.info("Identified the card, but couldn't find it in the TCG database — price and set need a manual check.");
       } else if (scanned.priceSuggestionInr && scanned.priceSuggestionSource === "gemini_search") {
@@ -399,7 +403,7 @@ const Admin = () => {
     if (photoFile) {
       const path = `card-images/${Date.now()}-${Math.random().toString(36).slice(2)}.${photoFile.name.split(".").pop() || "jpg"}`;
       const { error: upErr } = await supabase.storage.from("card-images").upload(path, photoFile, {
-        cacheControl: "3600",
+        cacheControl: "31536000", // paths are unique per upload (timestamp+random), never overwritten -- safe to cache for a year
         upsert: false,
       });
       if (upErr) {
@@ -414,7 +418,7 @@ const Admin = () => {
     if (videoFile) {
       const path = `card-videos/${Date.now()}-${Math.random().toString(36).slice(2)}.${videoFile.name.split(".").pop() || "mp4"}`;
       const { error: upErr } = await supabase.storage.from("card-videos").upload(path, videoFile, {
-        cacheControl: "3600",
+        cacheControl: "31536000", // paths are unique per upload (timestamp+random), never overwritten -- safe to cache for a year
         upsert: false,
       });
       if (upErr) {

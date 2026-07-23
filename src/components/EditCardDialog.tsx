@@ -158,7 +158,9 @@ export function EditCardDialog({ card, open, onOpenChange, onSave }: EditCardDia
 
     if (photoFile) {
       const photoPath = `card-images/${Date.now()}-${Math.random().toString(36).slice(2)}-${photoFile.name}`;
-      const { error: uploadError } = await supabase.storage.from("card-images").upload(photoPath, photoFile);
+      const { error: uploadError } = await supabase.storage.from("card-images").upload(photoPath, photoFile, {
+        cacheControl: "31536000", // unique timestamped path, never overwritten -- safe to cache for a year
+      });
       if (uploadError) {
         toast.error("Failed to upload new photo.");
         setIsSaving(false);
@@ -170,7 +172,9 @@ export function EditCardDialog({ card, open, onOpenChange, onSave }: EditCardDia
 
     if (videoFile) {
       const videoPath = `card-videos/${Date.now()}-${Math.random().toString(36).slice(2)}-${videoFile.name}`;
-      const { error: uploadError } = await supabase.storage.from("card-videos").upload(videoPath, videoFile);
+      const { error: uploadError } = await supabase.storage.from("card-videos").upload(videoPath, videoFile, {
+        cacheControl: "31536000", // unique timestamped path, never overwritten -- safe to cache for a year
+      });
       if (uploadError) {
         toast.error(isPayloadTooLargeError(uploadError) ? "Video is too large for upload (max 50MB). Try a shorter clip." : "Failed to upload new video.");
         setIsSaving(false);

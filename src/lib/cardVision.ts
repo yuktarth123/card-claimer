@@ -13,6 +13,7 @@ export interface CardIdentity {
   set: string | null;
   number: string | null;
   language: string | null;
+  printVariant: string | null;
   uncertain: boolean;
   note: string | null;
   priceSuggestion: PriceSuggestion | null;

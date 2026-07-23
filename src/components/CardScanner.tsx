@@ -12,6 +12,7 @@ export interface ScannedCard {
   set: string | null;
   number: string | null;
   language: string | null;
+  printVariant: string | null;
   priceSuggestionInr: number | null;
   priceSuggestionLabel: string | null;
   // Only "gemini_search" comes with real cited sources for this exact card.
@@ -99,6 +100,7 @@ export function CardScanner({ open, onOpenChange, onIdentified }: CardScannerPro
       set: identity.set,
       number: identity.number,
       language: identity.language,
+      printVariant: identity.printVariant,
       priceSuggestionInr: identity.priceSuggestion ? identity.priceSuggestion.amountUsd * getCachedUsdToInrRate() : null,
       priceSuggestionLabel: identity.priceSuggestion?.label ?? null,
       priceSuggestionSource: identity.priceSuggestion?.source ?? null,
@@ -171,6 +173,11 @@ export function CardScanner({ open, onOpenChange, onIdentified }: CardScannerPro
               {identity.language && identity.language.toLowerCase() !== "english" && (
                 <p className="text-xs text-amber-500 font-medium">
                   {identity.language} print — set/card # won't be auto-matched, the TCG database only covers English prints.
+                </p>
+              )}
+              {identity.printVariant && (
+                <p className="text-xs bg-primary/10 text-primary font-semibold rounded-md px-2 py-1 mt-1">
+                  ✨ {identity.printVariant} — this can price very differently from a plain print, check it's included below.
                 </p>
               )}
               {identity.priceSuggestion && (

@@ -38,6 +38,7 @@ interface IdentifyResult {
   set: string | null;
   number: string | null;
   language: string | null;
+  printVariant: string | null;
   uncertain: boolean;
   note: string | null;
 }
@@ -58,13 +59,14 @@ interface PriceSuggestion {
 const IDENTIFY_PROMPT = `You are looking at a photo of a single physical Pokémon TCG card. Identify it.
 
 Respond with ONLY a JSON object, no markdown fences, no extra text, matching exactly this shape:
-{"name": string or null, "set": string or null, "number": string or null, "language": string or null, "uncertain": boolean, "note": string or null}
+{"name": string or null, "set": string or null, "number": string or null, "language": string or null, "printVariant": string or null, "uncertain": boolean, "note": string or null}
 
 - "name": the card's name translated into English as it would appear on the English print (e.g. a card printed with the Chinese name "光辉摔角鹰人" should still be named "Radiant Hawlucha") -- this is used to look up the card in an English-only database, so always translate, never leave it in the original script. Include the card's suffix (ex, V, VMAX, GX, etc.) if visible.
 - "set": the expansion/set name in English if you can tell (e.g. "Obsidian Flames"), else null.
 - "number": the card number as printed, usually bottom-left like "4/102" or "004/091", else null. This is the number on THIS physical print and may differ from the English release's number -- report exactly what's printed, don't translate or guess the English equivalent.
 - "language": the language of the text actually printed on this card (e.g. "English", "Chinese", "Japanese", "Korean", "German", "French"), your best guess from the visible text. Only null if truly illegible.
-- "uncertain": true if you are not confident this is a real, specific, identifiable Pokémon card (blurry, obscured, not a Pokémon card, etc.). When true, do not guess a name -- set "name" to null and explain briefly in "note".
+- "printVariant": look closely for anything about THIS specific physical print that could make it worth more or less than a plain base print of the same numbered card -- a foil/holo stamp or seal (describe it, e.g. "gold star stamp", "staff stamp", "1st edition stamp"), an unusual holo/foil texture or pattern (e.g. "cosmos holo", "confetti holo", "reverse holo", "rainbow/textured foil", "non-holo"), or any other special marking not part of a normal print. This matters a lot for Chinese Gem Pack cards and similar special releases, which often have distinctly stamped or patterned variants priced very differently from the plain version of the same card number. Set to null only if the card looks like a normal, unstamped, unremarkable print.
+- "uncertain": true if you are not confident this is a real, specific, identifiable Pokémon card (blurry, obscured, not a Pokémon card, etc.). When true, do not guess a name -- set "name" to null and explain briefly in "note". Do NOT set this to true just because the printed copyright year looks later than what you'd expect from your training data -- your training data has a cutoff date, but new Pokémon products keep being printed and sold after it, so a copyright year that looks "future" to you (e.g. 2025, 2026, or later) is normal and is not by itself a sign of a fake or reprint card.
 - "note": a short explanation, only needed when "uncertain" is true (or null otherwise).
 
 Do not include any text outside the JSON object.`;
@@ -91,10 +93,18 @@ interface GeminiApiResponse {
   error?: { message?: string };
 }
 
+const GEMINI_TIMEOUT_MS = 20_000;
+
 // Tries each key in order, but only moves to the next one when the failure
 // looks like a per-key rate limit -- any other error (bad request, model
 // name typo, etc.) would fail identically on every key, so we return
 // immediately instead of burning through the whole list pointlessly.
+//
+// Each attempt has a hard timeout: without one, a slow/hanging Gemini call
+// would leave the whole function (and the "Identifying card..." spinner)
+// stuck indefinitely, and a user retrying while it's still hanging burns
+// even more quota on top of the still-in-flight call -- exactly what once
+// ran the free-tier keys straight into their rate limit.
 async function callGemini(
   keys: string[],
   model: string,
@@ -105,11 +115,14 @@ async function callGemini(
   let lastError = "Unknown error";
   for (const key of keys) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
     try {
       const res = await fetch(url, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
+        signal: controller.signal,
       });
       const json: GeminiApiResponse = await res.json();
       if (res.ok && !json.error) {
@@ -117,7 +130,11 @@ async function callGemini(
       }
       lastError = json.error?.message || `HTTP ${res.status}`;
     } catch (err) {
-      lastError = err instanceof Error ? err.message : String(err);
+      lastError = err instanceof Error && err.name === "AbortError"
+        ? `Timed out after ${GEMINI_TIMEOUT_MS / 1000}s`
+        : err instanceof Error ? err.message : String(err);
+    } finally {
+      clearTimeout(timeout);
     }
     if (!isRateLimitError(lastError)) {
       return { error: lastError };
@@ -145,6 +162,7 @@ function parseIdentity(text: string): IdentifyResult | null {
     set: typeof parsed.set === "string" ? parsed.set : null,
     number: typeof parsed.number === "string" ? parsed.number : null,
     language: typeof parsed.language === "string" ? parsed.language : null,
+    printVariant: typeof parsed.printVariant === "string" ? parsed.printVariant : null,
     uncertain: Boolean(parsed.uncertain),
     note: typeof parsed.note === "string" ? parsed.note : null,
   };
@@ -182,15 +200,16 @@ interface StepDebug {
 async function searchPriceWithGemini(
   keys: string[],
   model: string,
-  card: { name: string; set: string | null; number: string | null; language: string },
+  card: { name: string; set: string | null; number: string | null; language: string; printVariant: string | null },
 ): Promise<{ result: PriceSuggestion | null; debug: StepDebug }> {
   const prompt = `Search the web for the current resale/market price of this specific physical Pokémon TCG card:
 - Name: ${card.name}
 - Set: ${card.set ?? "unknown"}
 - Card number: ${card.number ?? "unknown"}
 - Print language: ${card.language}
+- Special print/stamp/pattern: ${card.printVariant ?? "none noted -- appears to be a plain, unstamped print"}
 
-This is the ${card.language}-language print specifically -- it is a different, differently-priced product from the English print of the same card, so do not substitute English-print pricing. Prioritize recent sold/completed listings over asking prices where you can find them. Collectr (getcollectr.com / app.getcollectr.com) tracks per-card pricing for Chinese and Japanese Pokémon TCG sets specifically -- check there in addition to general search.
+This is the ${card.language}-language print specifically -- it is a different, differently-priced product from the English print of the same card, so do not substitute English-print pricing.${card.printVariant ? ` It also has this specific print variant: "${card.printVariant}" -- price THAT variant specifically, not a generic/plain print of the same card number, since stamped or specially-patterned prints (common for Chinese Gem Pack and similar special releases) can be priced very differently from the plain version.` : ""} Prioritize recent sold/completed listings over asking prices where you can find them. Collectr (getcollectr.com / app.getcollectr.com) tracks per-card pricing for Chinese and Japanese Pokémon TCG sets specifically -- check there in addition to general search.
 
 After searching, respond with ONLY a JSON object, no markdown fences, no extra text, matching exactly this shape:
 {"amountUsd": number or null, "confident": boolean, "note": string or null}
@@ -346,6 +365,7 @@ Deno.serve(async (req: Request) => {
         set: identity.set,
         number: identity.number,
         language: identity.language!,
+        printVariant: identity.printVariant,
       });
       priceSuggestion = searchOutcome.result;
       debugSteps.push(searchOutcome.debug);

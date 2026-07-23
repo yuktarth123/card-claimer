@@ -33,7 +33,7 @@ export function AdditionalPhotosField({ urls, onChange, hideLabel }: Props) {
     setUploading(true);
     const path = `card-images/${Date.now()}-${Math.random().toString(36).slice(2)}.${file.name.split(".").pop() || "jpg"}`;
     const { error } = await supabase.storage.from("card-images").upload(path, file, {
-      cacheControl: "3600",
+      cacheControl: "31536000", // unique timestamped path, never overwritten -- safe to cache for a year
       upsert: false,
     });
     if (error) {
