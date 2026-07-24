@@ -253,7 +253,7 @@ export function CardTile({ card, myClaims, onClaim, onUnclaim, disabled, isSaleL
               </p>
             )}
             {(card.card_set || card.card_number || card.rarity || card.category) && (
-              <p className="text-xs text-muted-foreground truncate">
+              <p className="text-xs text-muted-foreground line-clamp-2">
                 {[card.card_set, card.card_number && `#${card.card_number}`, card.rarity, card.category].filter(Boolean).join(" • ")}
               </p>
             )}
