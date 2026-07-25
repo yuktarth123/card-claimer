@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CURRENCY, CLAIM_DURATION_MINUTES, ITEM_TYPES, PREORDER_MIN_DAYS, PREORDER_MAX_DAYS } from "@/config";
 import type { Database } from "@/integrations/supabase/types";
-import { Sparkles, Check, Minus, Plus, Truck, History, Images } from "lucide-react";
+import { Sparkles, Check, Minus, Plus, Truck, History, Images, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ClaimCountdown from "./ClaimCountdown";
 import { addDays, addMinutes, format, isPast } from "date-fns";
@@ -30,19 +30,22 @@ export function CardTile({ card, myClaims, onClaim, onUnclaim, disabled, isSaleL
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const [isInView, setIsInView] = useState(false);
   const [slideIndex, setSlideIndex] = useState(0);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
 
-  // Only autoplay this thumbnail's video while it's actually on screen, so a
-  // grid of many listings doesn't try to stream every video at once.
+  // Thumbnail videos never autoplay -- that was streaming full video for every
+  // listing a buyer merely scrolled past, which is what blew out Supabase's
+  // egress quota. Playback now only starts on an explicit tap, and pausing on
+  // scroll-out (instead of resuming) means a forgotten video can't keep
+  // streaming in the background either.
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) {
-          video.play().catch(() => {});
-        } else {
+        if (!entry.isIntersecting && !video.paused) {
           video.pause();
+          setIsVideoPlaying(false);
         }
       },
       { threshold: 0.5 }
@@ -50,6 +53,14 @@ export function CardTile({ card, myClaims, onClaim, onUnclaim, disabled, isSaleL
     observer.observe(video);
     return () => observer.disconnect();
   }, [card.video_url]);
+
+  const handlePlayClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const video = videoRef.current;
+    if (!video) return;
+    video.play().catch(() => {});
+    setIsVideoPlaying(true);
+  };
 
   // Same idea for the photo slideshow -- only cycle while the card is
   // actually visible, so an entire grid of listings isn't ticking timers
@@ -148,15 +159,30 @@ export function CardTile({ card, myClaims, onClaim, onUnclaim, disabled, isSaleL
         >
           {currentDisplayMediaUrl ? (
             card.video_url ? (
-              <video
-                ref={videoRef}
-                src={card.video_url}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                loop
-                muted
-                playsInline
-                preload="metadata"
-              />
+              <div className="relative w-full h-full">
+                <video
+                  ref={videoRef}
+                  src={card.video_url}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  loop
+                  muted
+                  playsInline
+                  preload="metadata"
+                  onPause={() => setIsVideoPlaying(false)}
+                />
+                {!isVideoPlaying && (
+                  <button
+                    type="button"
+                    onClick={handlePlayClick}
+                    aria-label="Play video preview"
+                    className="absolute inset-0 flex items-center justify-center bg-black/20"
+                  >
+                    <span className="flex h-12 w-12 items-center justify-center rounded-full bg-black/60 text-white">
+                      <Play className="h-6 w-6 fill-white" />
+                    </span>
+                  </button>
+                )}
+              </div>
             ) : hasSlideshow ? (
               photoOnlyUrls.map((url, i) => (
                 <img

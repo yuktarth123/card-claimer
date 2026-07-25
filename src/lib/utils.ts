@@ -16,3 +16,14 @@ export function toWhatsAppNumber(phone: string): string {
 export function buildWhatsAppLink(phone: string, message: string): string {
   return `https://wa.me/${toWhatsAppNumber(phone)}?text=${encodeURIComponent(message)}`;
 }
+
+/** Parses a Supabase Storage public URL into its bucket and object path, or
+ * null if the URL isn't one of this project's storage objects (e.g. an
+ * externally hosted image). Used to clean up storage when the row that
+ * referenced it is deleted, so removed listings don't leave orphaned files
+ * behind. */
+export function parseStorageUrl(url: string): { bucket: string; path: string } | null {
+  const match = url.match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)$/);
+  if (!match) return null;
+  return { bucket: match[1], path: decodeURIComponent(match[2]) };
+}

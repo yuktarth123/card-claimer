@@ -25,7 +25,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { useAdminSession } from "@/hooks/useAdminSession";
 import { AdminLogin } from "@/components/AdminLogin";
-import { cn } from "@/lib/utils";
+import { cn, parseStorageUrl } from "@/lib/utils";
 import { prepareVideoForUpload, isPayloadTooLargeError } from "@/lib/videoUpload";
 
 type DbCard = Database["public"]["Tables"]["cards"]["Row"];
@@ -463,11 +463,32 @@ const Admin = () => {
     }
   };
 
-  const remove = async (id: string) => {
+  const remove = async (card: DbCard) => {
     if (!confirm("Delete this listing? Any pending claims on it will be removed too.")) return;
-    const { error } = await supabase.from("cards").delete().eq("id", id);
-    if (error) toast.error("Delete failed");
-    else toast("Deleted");
+
+    const { error } = await supabase.from("cards").delete().eq("id", card.id);
+    if (error) {
+      toast.error("Delete failed");
+      return;
+    }
+    toast("Deleted");
+
+    // Best-effort: the listing is already gone, so a storage hiccup here
+    // shouldn't block the admin -- it just leaves an orphaned file to clean
+    // up later instead of a broken listing they can't remove.
+    const mediaUrls = [card.video_url, card.photo_url, ...(card.photo_urls ?? [])].filter(
+      (u): u is string => !!u
+    );
+    const pathsByBucket = new Map<string, string[]>();
+    for (const url of mediaUrls) {
+      const parsed = parseStorageUrl(url);
+      if (!parsed) continue;
+      pathsByBucket.set(parsed.bucket, [...(pathsByBucket.get(parsed.bucket) ?? []), parsed.path]);
+    }
+    for (const [bucket, paths] of pathsByBucket) {
+      const { error: storageError } = await supabase.storage.from(bucket).remove(paths);
+      if (storageError) console.error(`Failed to delete ${bucket} files for card ${card.id}:`, storageError);
+    }
   };
 
   const handleReleaseClaim = async (claimId: string) => {
@@ -978,7 +999,7 @@ const Admin = () => {
                         <Button size="icon" variant="ghost" onClick={() => handleEditClick(c)} title="Edit">
                           <Edit className="w-4 h-4 text-muted-foreground" />
                         </Button>
-                        <Button size="icon" variant="ghost" onClick={() => remove(c.id)} title="Delete">
+                        <Button size="icon" variant="ghost" onClick={() => remove(c)} title="Delete">
                           <Trash2 className="w-4 h-4 text-destructive" />
                         </Button>
                       </div>
