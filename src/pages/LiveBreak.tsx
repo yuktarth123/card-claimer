@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, Loader2, Package } from "lucide-react";
 import { CURRENCY } from "@/config";
+import { extractYouTubeId } from "@/lib/youtube";
 import { toast } from "sonner";
 
 type BoxBreak = Database["public"]["Tables"]["box_breaks"]["Row"];
@@ -225,7 +226,7 @@ const LiveBreak = () => {
             {breakRow.youtube_video_id ? (
               <iframe
                 className="w-full aspect-video rounded-2xl border border-border"
-                src={`https://www.youtube.com/embed/${breakRow.youtube_video_id}`}
+                src={`https://www.youtube.com/embed/${extractYouTubeId(breakRow.youtube_video_id)}`}
                 title={breakRow.title}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen

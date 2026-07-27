@@ -7,8 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Plus, Play, StopCircle, RotateCcw, Trash2, Upload, X, Package, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, Plus, Play, StopCircle, RotateCcw, Trash2, Upload, X, Package, ChevronDown, ChevronUp, Check } from "lucide-react";
 import { CURRENCY } from "@/config";
+import { extractYouTubeId } from "@/lib/youtube";
+import { parseStorageUrl } from "@/lib/utils";
 
 type BoxBreak = Database["public"]["Tables"]["box_breaks"]["Row"];
 type BreakSlotClaim = Database["public"]["Tables"]["break_slot_claims"]["Row"];
@@ -29,6 +31,8 @@ export function BoxBreakManager() {
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [claimsByBreak, setClaimsByBreak] = useState<Record<string, BreakSlotClaim[]>>({});
+  const [videoIdDrafts, setVideoIdDrafts] = useState<Record<string, string>>({});
+  const [savingVideoId, setSavingVideoId] = useState<string | null>(null);
 
   const refresh = async () => {
     const { data, error } = await supabase.from("box_breaks").select("*").order("created_at", { ascending: false });
@@ -93,7 +97,7 @@ export function BoxBreakManager() {
       title: title.trim(),
       total_slots: slots,
       price_per_slot: price,
-      youtube_video_id: youtubeVideoId.trim() || null,
+      youtube_video_id: youtubeVideoId.trim() ? extractYouTubeId(youtubeVideoId) : null,
       image_url: imageUrl,
     });
     setCreating(false);
@@ -109,6 +113,16 @@ export function BoxBreakManager() {
     }
   };
 
+  const saveVideoId = async (breakId: string) => {
+    const draft = videoIdDrafts[breakId] ?? "";
+    const cleaned = draft.trim() ? extractYouTubeId(draft) : null;
+    setSavingVideoId(breakId);
+    const { error } = await supabase.from("box_breaks").update({ youtube_video_id: cleaned }).eq("id", breakId);
+    setSavingVideoId(null);
+    if (error) toast.error(error.message);
+    else toast.success(cleaned ? "Video updated" : "Video cleared");
+  };
+
   const setStatus = async (breakId: string, status: string) => {
     const { error } = await supabase.from("box_breaks").update({ status }).eq("id", breakId);
     if (error) toast.error(error.message);
@@ -117,8 +131,24 @@ export function BoxBreakManager() {
   const deleteBreak = async (breakRow: BoxBreak) => {
     if (!confirm(`Delete "${breakRow.title}"? This also removes its slot claims and chat history.`)) return;
     const { error } = await supabase.from("box_breaks").delete().eq("id", breakRow.id);
-    if (error) toast.error(error.message);
-    else toast.success("Break deleted");
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Break deleted");
+
+    // Best-effort, same as the card-listing delete flow: the break is
+    // already gone (and its claims/chat cascaded via FK), so a storage
+    // hiccup here shouldn't block the admin -- it just leaves an orphaned
+    // cover image to clean up later instead of a broken break they can't
+    // remove.
+    if (breakRow.image_url) {
+      const parsed = parseStorageUrl(breakRow.image_url);
+      if (parsed) {
+        const { error: storageError } = await supabase.storage.from(parsed.bucket).remove([parsed.path]);
+        if (storageError) console.error(`Failed to delete break image for ${breakRow.id}:`, storageError);
+      }
+    }
   };
 
   const markSold = async (claimId: string, breakId: string) => {
@@ -156,13 +186,13 @@ export function BoxBreakManager() {
               <Input type="number" min={0} value={pricePerSlot} onChange={(e) => setPricePerSlot(e.target.value)} />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
-              <Label>YouTube video ID</Label>
+              <Label>YouTube video URL or ID</Label>
               <Input
-                placeholder="e.g. dQw4w9WgXcQ (from youtube.com/watch?v=...)"
+                placeholder="Paste the full youtube.com/watch?v=... link, or just the ID"
                 value={youtubeVideoId}
                 onChange={(e) => setYoutubeVideoId(e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">Leave blank until you start the YouTube live stream, then paste it in and set status to Live.</p>
+              <p className="text-xs text-muted-foreground">Leave blank until you start the YouTube live stream, then paste the link in below and set status to Live.</p>
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Cover image</Label>
@@ -225,8 +255,24 @@ export function BoxBreakManager() {
                         </div>
                         <p className="text-xs text-muted-foreground">
                           {b.total_slots} slots · {CURRENCY}{Number(b.price_per_slot).toFixed(0)} each
-                          {b.youtube_video_id ? "" : " · no video set"}
                         </p>
+                        <div className="flex items-center gap-1.5 mt-1.5">
+                          <Input
+                            className="h-7 text-xs max-w-xs"
+                            placeholder="Paste YouTube link once live…"
+                            value={videoIdDrafts[b.id] ?? b.youtube_video_id ?? ""}
+                            onChange={(e) => setVideoIdDrafts((prev) => ({ ...prev, [b.id]: e.target.value }))}
+                          />
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2"
+                            disabled={savingVideoId === b.id}
+                            onClick={() => saveVideoId(b.id)}
+                          >
+                            {savingVideoId === b.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                          </Button>
+                        </div>
                       </div>
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {b.status !== "live" && (
