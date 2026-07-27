@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Send, MessageCircle } from "lucide-react";
+import { Send, MessageCircle, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
 type ChatMessage = Database["public"]["Tables"]["live_chat_messages"]["Row"];
@@ -11,9 +11,10 @@ type ChatMessage = Database["public"]["Tables"]["live_chat_messages"]["Row"];
 interface Props {
   breakId: string;
   displayName: string;
+  hidePopoutButton?: boolean;
 }
 
-export function LiveChat({ breakId, displayName }: Props) {
+export function LiveChat({ breakId, displayName, hidePopoutButton }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
@@ -75,6 +76,16 @@ export function LiveChat({ breakId, displayName }: Props) {
       <div className="px-3 py-2 border-b border-border flex items-center gap-1.5 shrink-0">
         <MessageCircle className="w-4 h-4 text-primary" />
         <span className="font-bold text-sm">Live Chat</span>
+        {!hidePopoutButton && (
+          <button
+            type="button"
+            onClick={() => window.open(`/breaks/${breakId}/chat`, "_blank", "width=380,height=680,noopener,noreferrer")}
+            title="Pop out chat into its own window"
+            className="ml-auto text-muted-foreground hover:text-foreground"
+          >
+            <ExternalLink className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-2 space-y-1.5 min-h-0">

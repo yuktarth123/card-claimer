@@ -221,53 +221,59 @@ const LiveBreak = () => {
           </Badge>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2 space-y-4">
+        {/* Video is sticky on every breakpoint so the stream stays in view
+            while picking slots or chatting below -- no scrolling up to
+            re-find it. DOM order (video, chat, slots) also controls the
+            stacked order on mobile; lg:col-span-2/row-span-2 below re-lay
+            them into a video-top-left + chat-right-sidebar + slots-bottom
+            grid on desktop via normal auto-placement. */}
+        <div className="grid lg:grid-cols-3 gap-4 items-start">
+          <div className="lg:col-span-2 sticky top-2 z-10">
             {breakRow.youtube_video_id ? (
               <iframe
-                className="w-full aspect-video rounded-2xl border border-border"
+                className="w-full aspect-video rounded-2xl border border-border shadow-lg"
                 src={`https://www.youtube.com/embed/${extractYouTubeId(breakRow.youtube_video_id)}`}
                 title={breakRow.title}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
               />
             ) : (
-              <div className="w-full aspect-video rounded-2xl border border-border bg-muted flex items-center justify-center text-muted-foreground">
+              <div className="w-full aspect-video rounded-2xl border border-border bg-muted flex items-center justify-center text-muted-foreground shadow-lg">
                 Stream hasn't started yet — check back soon!
               </div>
             )}
-
-            <div className="rounded-2xl border border-border gradient-card-bg p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                <h2 className="font-bold">Pick your slots</h2>
-                {selectedSlots.size > 0 && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">
-                      {selectedSlots.size} selected · {CURRENCY}{selectedTotal.toFixed(0)}
-                    </span>
-                    <Button size="sm" onClick={handleClaimSelected} disabled={claiming} className="gradient-gold text-primary-foreground font-bold">
-                      {claiming && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
-                      Claim {selectedSlots.size} slot{selectedSlots.size === 1 ? "" : "s"}
-                    </Button>
-                  </div>
-                )}
-              </div>
-              {!name && <p className="text-sm text-muted-foreground mb-3">Enter your name above to start claiming slots.</p>}
-              {breakRow.status === "ended" && <p className="text-sm text-muted-foreground mb-3">This break has ended.</p>}
-              <SlotGrid
-                totalSlots={breakRow.total_slots}
-                pricePerSlot={Number(breakRow.price_per_slot)}
-                claims={claims}
-                mySessionId={sessionId}
-                selectedSlots={selectedSlots}
-                onToggleSlot={toggleSlot}
-                disabled={!canInteract}
-              />
-            </div>
           </div>
 
-          <div className="h-[420px] lg:h-auto">
+          <div className="lg:row-span-2 h-[420px] lg:h-[calc(100vh-6rem)] lg:sticky lg:top-2">
             <LiveChat breakId={breakRow.id} displayName={name} />
+          </div>
+
+          <div className="lg:col-span-2 rounded-2xl border border-border gradient-card-bg p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <h2 className="font-bold">Pick your slots</h2>
+              {selectedSlots.size > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">
+                    {selectedSlots.size} selected · {CURRENCY}{selectedTotal.toFixed(0)}
+                  </span>
+                  <Button size="sm" onClick={handleClaimSelected} disabled={claiming} className="gradient-gold text-primary-foreground font-bold">
+                    {claiming && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+                    Claim {selectedSlots.size} slot{selectedSlots.size === 1 ? "" : "s"}
+                  </Button>
+                </div>
+              )}
+            </div>
+            {!name && <p className="text-sm text-muted-foreground mb-3">Enter your name above to start claiming slots.</p>}
+            {breakRow.status === "ended" && <p className="text-sm text-muted-foreground mb-3">This break has ended.</p>}
+            <SlotGrid
+              totalSlots={breakRow.total_slots}
+              pricePerSlot={Number(breakRow.price_per_slot)}
+              claims={claims}
+              mySessionId={sessionId}
+              selectedSlots={selectedSlots}
+              onToggleSlot={toggleSlot}
+              disabled={!canInteract}
+            />
           </div>
         </div>
       </main>

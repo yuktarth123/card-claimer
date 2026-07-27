@@ -9,6 +9,7 @@ import Admin from "./pages/Admin.tsx";
 import Leaderboard from "./pages/Leaderboard.tsx";
 import BoxBreaks from "./pages/BoxBreaks.tsx";
 import LiveBreak from "./pages/LiveBreak.tsx";
+import LiveBreakChat from "./pages/LiveBreakChat.tsx";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,7 @@ const App = () => (
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/breaks" element={<BoxBreaks />} />
           <Route path="/breaks/:breakId" element={<LiveBreak />} />
+          <Route path="/breaks/:breakId/chat" element={<LiveBreakChat />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
