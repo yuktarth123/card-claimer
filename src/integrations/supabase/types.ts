@@ -56,6 +56,80 @@ export type Database = {
         }
         Relationships: []
       }
+      box_breaks: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string | null
+          price_per_slot: number
+          status: string
+          title: string
+          total_slots: number
+          youtube_video_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          price_per_slot?: number
+          status?: string
+          title: string
+          total_slots: number
+          youtube_video_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          price_per_slot?: number
+          status?: string
+          title?: string
+          total_slots?: number
+          youtube_video_id?: string | null
+        }
+        Relationships: []
+      }
+      break_slot_claims: {
+        Row: {
+          break_id: string
+          buyer_name: string
+          buyer_session_id: string
+          claimed_at: string
+          created_at: string
+          id: string
+          slot_number: number
+          status: string
+        }
+        Insert: {
+          break_id: string
+          buyer_name: string
+          buyer_session_id: string
+          claimed_at?: string
+          created_at?: string
+          id?: string
+          slot_number: number
+          status?: string
+        }
+        Update: {
+          break_id?: string
+          buyer_name?: string
+          buyer_session_id?: string
+          claimed_at?: string
+          created_at?: string
+          id?: string
+          slot_number?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "break_slot_claims_break_id_fkey"
+            columns: ["break_id"]
+            isOneToOne: false
+            referencedRelation: "box_breaks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cards: {
         Row: {
           card_number: string | null
@@ -171,6 +245,38 @@ export type Database = {
             columns: ["card_id"]
             isOneToOne: false
             referencedRelation: "cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      live_chat_messages: {
+        Row: {
+          break_id: string
+          created_at: string
+          display_name: string
+          id: string
+          message: string
+        }
+        Insert: {
+          break_id: string
+          created_at?: string
+          display_name: string
+          id?: string
+          message: string
+        }
+        Update: {
+          break_id?: string
+          created_at?: string
+          display_name?: string
+          id?: string
+          message?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_chat_messages_break_id_fkey"
+            columns: ["break_id"]
+            isOneToOne: false
+            referencedRelation: "box_breaks"
             referencedColumns: ["id"]
           },
         ]
@@ -296,6 +402,71 @@ export type Database = {
     }
     Functions: {
       admin_release_claim: { Args: { _claim_id: string }; Returns: undefined }
+      admin_release_break_slot_claim: { Args: { _claim_id: string }; Returns: undefined }
+      admin_mark_break_slot_sold: {
+        Args: { _claim_id: string }
+        Returns: {
+          break_id: string
+          buyer_name: string
+          buyer_session_id: string
+          claimed_at: string
+          created_at: string
+          id: string
+          slot_number: number
+          status: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "break_slot_claims"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      claim_break_slots: {
+        Args: {
+          _break_id: string
+          _buyer_name: string
+          _session_id: string
+          _slot_numbers: number[]
+        }
+        Returns: {
+          break_id: string
+          buyer_name: string
+          buyer_session_id: string
+          claimed_at: string
+          created_at: string
+          id: string
+          slot_number: number
+          status: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "break_slot_claims"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      release_break_slot_claim: { Args: { _claim_id: string; _session_id: string }; Returns: undefined }
+      release_expired_break_slot_claims: { Args: never; Returns: undefined }
+      finalize_break_slot_claims: {
+        Args: { _break_id: string; _session_id: string }
+        Returns: {
+          break_id: string
+          buyer_name: string
+          buyer_session_id: string
+          claimed_at: string
+          created_at: string
+          id: string
+          slot_number: number
+          status: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "break_slot_claims"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       apply_site_wide_sale: { Args: { _percent: number }; Returns: undefined }
       claim_units: {
         Args: {

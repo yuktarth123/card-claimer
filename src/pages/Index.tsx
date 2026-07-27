@@ -6,7 +6,7 @@ import { NameGate } from "@/components/NameGate";
 import { CheckoutSheet } from "@/components/CheckoutSheet";
 import { useBuyer } from "@/hooks/useBuyer";
 import { toast } from "sonner";
-import { Zap, Trophy, Search, X, Truck, SlidersHorizontal, History } from "lucide-react";
+import { Zap, Trophy, Search, X, Truck, SlidersHorizontal, History, PackageOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link } from "react-router-dom";
@@ -330,8 +330,14 @@ const Index = () => {
               {SELLER_NAME}
             </span>
             <Link
-              to="/leaderboard"
+              to="/breaks"
               className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/15 border border-primary/30 text-sm font-semibold text-primary hover:bg-primary/25 transition"
+            >
+              <PackageOpen className="w-4 h-4" /> Box Breaks
+            </Link>
+            <Link
+              to="/leaderboard"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/15 border border-primary/30 text-sm font-semibold text-primary hover:bg-primary/25 transition"
             >
               <Trophy className="w-4 h-4" /> Leaderboard
             </Link>

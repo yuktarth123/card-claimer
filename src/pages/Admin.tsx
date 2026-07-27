@@ -20,6 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { SaleManager } from "@/components/SaleManager";
 import { SiteWideSaleManager } from "@/components/SiteWideSaleManager";
 import { SalesHistory } from "@/components/SalesHistory";
+import { BoxBreakManager } from "@/components/BoxBreakManager";
 import { CardScanner, ScannedCard } from "@/components/CardScanner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
@@ -584,9 +585,14 @@ const Admin = () => {
         <Tabs defaultValue="listings">
           <TabsList className="mb-6">
             <TabsTrigger value="listings">Listings</TabsTrigger>
+            <TabsTrigger value="breaks">Box Breaks</TabsTrigger>
             <TabsTrigger value="sales">Sales History</TabsTrigger>
             <TabsTrigger value="setup">Sale Setup</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="breaks">
+            <BoxBreakManager />
+          </TabsContent>
 
           <TabsContent value="setup" className="grid lg:grid-cols-2 gap-6 [&>*]:min-w-0">
         {/* Sale Time Manager */}
