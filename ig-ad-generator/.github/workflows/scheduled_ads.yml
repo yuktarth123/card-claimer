@@ -1,0 +1,39 @@
+name: Generate Instagram ads
+
+on:
+  schedule:
+    # 15:00 UTC daily -- edit to taste. cron uses UTC regardless of your timezone.
+    - cron: "0 15 * * *"
+  workflow_dispatch: {} # lets you trigger a run manually from the Actions tab
+
+jobs:
+  generate-ads:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # ffmpeg ships preinstalled on GitHub-hosted ubuntu-latest runners.
+      - run: ffmpeg -version
+
+      - run: pip install -r requirements.txt
+
+      - name: Run ad generation pipeline
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_STORAGE_BUCKET: ${{ secrets.SUPABASE_STORAGE_BUCKET }}
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          IG_BUSINESS_ACCOUNT_ID: ${{ secrets.IG_BUSINESS_ACCOUNT_ID }}
+        run: python -m src.pipeline
+
+      - name: Upload generated ads as a workflow artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-ads-${{ github.run_id }}
+          path: output/
+          retention-days: 14

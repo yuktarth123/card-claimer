@@ -1,0 +1,40 @@
+# ig-ad-generator configuration
+# Non-secret settings. Secrets (API keys, tokens) go in .env / GitHub Actions secrets.
+
+brand:
+  name: "Yanks TCG"
+  handle: "@yankstcg"          # your Instagram handle, used in captions/CTAs
+  website: "https://yanks-tcg.vercel.app/"
+  accent_color: "#1d4ed8"      # used for price tag / text overlay background
+  logo_path: "assets/logo.png" # optional, drop a transparent PNG here; leave file absent to skip
+
+selection:
+  # How the pipeline picks which cards to promote each run.
+  # strategy: newest | on_sale | random | preorder
+  strategy: "on_sale"
+  count: 3                     # how many cards to turn into ads per run
+  only_in_stock: true
+
+copy:
+  tone: "hype"                 # hype | minimal | collector
+  include_hashtags: true
+  extra_hashtags:
+    - "#tcg"
+    - "#tradingcards"
+    - "#cardcollector"
+
+image:
+  feed_size: [1080, 1080]
+  story_size: [1080, 1920]
+  background_prompt_style: "clean studio background, soft light rays, subtle bokeh, premium product photography backdrop, no text, no watermark"
+
+video:
+  enabled: true
+  duration_seconds: 8
+  fps: 30
+  music_path: "assets/music/background.mp3"   # optional; see SETUP.md for free royalty-free sources
+  size: [1080, 1920]
+
+publish:
+  auto_publish: false          # keep false until you've reviewed a few dry runs in the workflow artifacts
+  post_type: "image_and_reel"  # image_and_reel | image_only | reel_only
