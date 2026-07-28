@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CURRENCY, CLAIM_DURATION_MINUTES, ITEM_TYPES, PREORDER_MIN_DAYS, PREORDER_MAX_DAYS } from "@/config";
 import type { Database } from "@/integrations/supabase/types";
-import { Sparkles, Check, Minus, Plus, Truck, History, Images, Play } from "lucide-react";
+import { Sparkles, Check, Minus, Plus, Truck, History, Images, Play, Award } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ClaimCountdown from "./ClaimCountdown";
 import { addDays, addMinutes, format, isPast } from "date-fns";
@@ -143,8 +143,31 @@ export function CardTile({ card, myClaims, onClaim, onUnclaim, disabled, isSaleL
     setPickQuantity(1);
   };
 
+  const isSlab = card.item_type === "slab";
+
+  // Any listing (not just slabs) can get the animated ring -- the admin sets
+  // this per listing (see VISUAL_TIERS), it isn't derived automatically.
+  // Suppressed once sold out -- a shimmering "buy me" effect on something
+  // nobody can actually buy right now just reads as broken/misleading.
+  const tierRingClass =
+    soldOut
+      ? null
+      : card.visual_tier === "top_grade"
+      ? "slab-ring-gold"
+      : card.visual_tier === "low_pop"
+      ? "slab-ring-holo"
+      : null;
+
+  const Ring = ({ children }: { children: React.ReactNode }) =>
+    tierRingClass ? (
+      <div className={cn("rounded-2xl p-[3px] animate-gradient-pan", tierRingClass)}>{children}</div>
+    ) : (
+      <>{children}</>
+    );
+
   return (
     <>
+      <Ring>
       <div
         className={cn(
           "group relative overflow-hidden rounded-2xl gradient-card-bg border border-border shadow-card-pop animate-fade-in transition-all",
@@ -242,8 +265,26 @@ export function CardTile({ card, myClaims, onClaim, onUnclaim, disabled, isSaleL
               <span className="truncate">{soldOut ? "Out of stock" : `${card.quantity_available} left`}</span>
             </Badge>
           </div>
-          {(myTotalClaimed > 0 || card.is_vintage || (card.language && card.language !== "English")) && (
+          {(myTotalClaimed > 0 || card.is_vintage || isSlab || (card.language && card.language !== "English")) && (
             <div className="absolute top-2 left-2 max-w-[calc(50%-10px)] flex flex-col items-start gap-1">
+              {isSlab && (card.grading_company || card.grade) && (
+                <Badge
+                  className={cn(
+                    "max-w-full border-0 shadow-md font-bold",
+                    tierRingClass === "slab-ring-gold" && "gradient-gold text-primary-foreground animate-pulse-glow",
+                    tierRingClass === "slab-ring-holo" && "slab-ring-holo animate-gradient-pan text-white",
+                    !tierRingClass && "bg-card text-foreground border border-border"
+                  )}
+                >
+                  <Award className="w-3 h-3 mr-1 shrink-0" />
+                  <span className="truncate">{[card.grading_company, card.grade].filter(Boolean).join(" ")}</span>
+                </Badge>
+              )}
+              {isSlab && card.population_count != null && (
+                <Badge className="max-w-full bg-card text-foreground border border-border shadow-md">
+                  <span className="truncate">Pop {card.population_count}{card.population_note ? ` · ${card.population_note}` : ""}</span>
+                </Badge>
+              )}
               {card.is_vintage && (
                 <Badge className="max-w-full border-0 shadow-md font-bold bg-amber-900 text-amber-100">
                   <History className="w-3 h-3 mr-1 shrink-0" /> <span className="truncate">Vintage</span>
@@ -273,7 +314,7 @@ export function CardTile({ card, myClaims, onClaim, onUnclaim, disabled, isSaleL
         <div className="p-3 space-y-2">
           <div>
             <h3 className="font-bold leading-tight">{card.name}</h3>
-            {card.item_type !== "card" && (
+            {card.item_type !== "card" && !isSlab && (
               <p className="text-xs font-semibold text-secondary-foreground truncate">
                 {ITEM_TYPES.find((t) => t.value === card.item_type)?.label ?? card.item_type}
               </p>
@@ -287,6 +328,9 @@ export function CardTile({ card, myClaims, onClaim, onUnclaim, disabled, isSaleL
               <p className="text-xs font-semibold text-secondary flex items-center gap-1 mt-0.5">
                 <Truck className="w-3 h-3" /> Arrives {arrivalWindow}
               </p>
+            )}
+            {isSlab && card.slab_description && (
+              <p className="text-xs text-muted-foreground line-clamp-3 mt-1">{card.slab_description}</p>
             )}
           </div>
           <div className="flex items-center justify-between gap-2">
@@ -303,8 +347,13 @@ export function CardTile({ card, myClaims, onClaim, onUnclaim, disabled, isSaleL
           </div>
 
           {!soldOut && (
-            <div className="flex items-center gap-1.5">
-              <div className="flex items-center border border-border rounded-lg shrink-0">
+            // Stacked below sm: at 2-column mobile width, a shrink-0 stepper
+            // next to the button leaves too little room for "Coming Soon" to
+            // render without truncating (worse once a shimmer ring's padding
+            // eats a few more px) -- full-width button on its own row sidesteps
+            // that instead of fine-tuning pixels.
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1.5">
+              <div className="flex items-center justify-center border border-border rounded-lg shrink-0">
                 <button
                   className="w-6 h-7 flex items-center justify-center text-muted-foreground disabled:opacity-40"
                   onClick={() => setPickQuantity((q) => Math.max(1, q - 1))}
@@ -326,7 +375,7 @@ export function CardTile({ card, myClaims, onClaim, onUnclaim, disabled, isSaleL
                 onClick={handleClaimClick}
                 disabled={isClaimButtonDisabled}
                 className={cn(
-                  "flex-1 min-w-0 px-1.5 text-xs sm:text-sm text-primary-foreground font-bold",
+                  "sm:flex-1 min-w-0 px-1.5 text-xs sm:text-sm text-primary-foreground font-bold",
                   isClaimButtonDisabled ? "bg-muted-foreground/50 cursor-not-allowed" : "gradient-gold hover:opacity-90 shadow-glow animate-pulse-glow"
                 )}
               >
@@ -366,6 +415,7 @@ export function CardTile({ card, myClaims, onClaim, onUnclaim, disabled, isSaleL
           )}
         </div>
       </div>
+      </Ring>
       {allMediaUrls.length > 0 && (
         <MediaCarouselDialog
           open={isCarouselOpen}

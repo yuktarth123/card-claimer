@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Camera, Upload, Search, Trash2, Plus, X, Loader2, Lock, Clock, Edit, Video, Wrench, Filter, ArrowDownWideNarrow, ArrowUpWideNarrow, CheckCircle2, Gift, Trophy, PackageCheck, LogOut, Copy } from "lucide-react";
-import { CURRENCY, SELLER_NAME, CARD_CONDITIONS, ITEM_TYPES, PREORDER_MIN_DAYS, PREORDER_MAX_DAYS } from "@/config";
+import { CURRENCY, SELLER_NAME, CARD_CONDITIONS, ITEM_TYPES, PREORDER_MIN_DAYS, PREORDER_MAX_DAYS, GRADING_COMPANIES, VISUAL_TIERS } from "@/config";
 import { getCachedUsdToInrRate, refreshUsdToInrRate } from "@/lib/fxRate";
 import { ComboSelect } from "@/components/ComboSelect";
 import { SaleTimeManager } from "@/components/SaleTimeManager";
@@ -20,6 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { SaleManager } from "@/components/SaleManager";
 import { SiteWideSaleManager } from "@/components/SiteWideSaleManager";
 import { SalesHistory } from "@/components/SalesHistory";
+import { AnalyticsDashboard } from "@/components/AnalyticsDashboard";
 import { BoxBreakManager } from "@/components/BoxBreakManager";
 import { CardScanner, ScannedCard } from "@/components/CardScanner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -69,6 +70,13 @@ const Admin = () => {
   const [salePrice, setSalePrice] = useState("");
   const [quantity, setQuantity] = useState("1");
   const [condition, setCondition] = useState<string>(CARD_CONDITIONS[0]);
+  const [gradingCompany, setGradingCompany] = useState<string>(GRADING_COMPANIES[0]);
+  const [grade, setGrade] = useState("");
+  const [certNumber, setCertNumber] = useState("");
+  const [populationCount, setPopulationCount] = useState("");
+  const [populationNote, setPopulationNote] = useState("");
+  const [slabDescription, setSlabDescription] = useState("");
+  const [visualTier, setVisualTier] = useState<string>("standard");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [existingPhotoUrl, setExistingPhotoUrl] = useState<string | null>(null);
@@ -83,6 +91,7 @@ const Admin = () => {
   const photoFileRef = useRef<HTMLInputElement>(null);
   const videoFileRef = useRef<HTMLInputElement>(null);
   const addCardFormRef = useRef<HTMLDivElement>(null);
+  const isSlab = itemType === "slab";
 
   const [search, setSearch] = useState("");
   const [searching, setSearching] = useState(false);
@@ -338,6 +347,13 @@ const Admin = () => {
     setPrice("");
     setSalePrice("");
     setQuantity("1");
+    setGradingCompany(GRADING_COMPANIES[0]);
+    setGrade("");
+    setCertNumber("");
+    setPopulationCount("");
+    setPopulationNote("");
+    setSlabDescription("");
+    setVisualTier("standard");
     setPhotoFile(null);
     setPhotoPreview(null);
     setExistingPhotoUrl(null);
@@ -365,6 +381,13 @@ const Admin = () => {
     setName(c.name);
     setIsPreorder(c.is_preorder);
     setIsVintage(c.is_vintage);
+    setGradingCompany(c.grading_company || GRADING_COMPANIES[0]);
+    setGrade(c.grade ?? "");
+    setCertNumber(c.cert_number ?? "");
+    setPopulationCount(c.population_count != null ? String(c.population_count) : "");
+    setPopulationNote(c.population_note ?? "");
+    setSlabDescription(c.slab_description ?? "");
+    setVisualTier(c.visual_tier ?? "standard");
     setPrice(String(c.price));
     setSalePrice(c.sale_price !== null ? String(c.sale_price) : "");
     setQuantity(String(c.quantity_total));
@@ -438,8 +461,8 @@ const Admin = () => {
       name: name.trim(),
       item_type: itemType,
       card_set: cardSet.trim() || null,
-      card_number: itemType === "card" ? cardNumber.trim() || null : null,
-      rarity: itemType === "card" ? rarity.trim() || null : null,
+      card_number: itemType === "card" || isSlab ? cardNumber.trim() || null : null,
+      rarity: itemType === "card" || isSlab ? rarity.trim() || null : null,
       category: category.trim() || null,
       is_preorder: isPreorder,
       is_vintage: isVintage,
@@ -453,6 +476,13 @@ const Admin = () => {
       photo_urls: extraPhotoUrls,
       video_url,
       tcg_image_url: tcgImageUrl,
+      grading_company: isSlab ? gradingCompany : null,
+      grade: isSlab ? grade.trim() || null : null,
+      cert_number: isSlab ? certNumber.trim() || null : null,
+      population_count: isSlab && populationCount.trim() ? Math.max(0, Math.floor(Number(populationCount))) : null,
+      population_note: isSlab ? populationNote.trim() || null : null,
+      slab_description: isSlab ? slabDescription.trim() || null : null,
+      visual_tier: visualTier,
     });
     setPublishing(false);
     if (error) {
@@ -583,11 +613,12 @@ const Admin = () => {
 
       <main className="container py-6">
         <Tabs defaultValue="listings">
-          <TabsList className="mb-6">
-            <TabsTrigger value="listings">Listings</TabsTrigger>
-            <TabsTrigger value="breaks">Box Breaks</TabsTrigger>
-            <TabsTrigger value="sales">Sales History</TabsTrigger>
-            <TabsTrigger value="setup">Sale Setup</TabsTrigger>
+          <TabsList className="mb-6 max-w-full overflow-x-auto justify-start">
+            <TabsTrigger value="listings" className="shrink-0">Listings</TabsTrigger>
+            <TabsTrigger value="breaks" className="shrink-0">Box Breaks</TabsTrigger>
+            <TabsTrigger value="sales" className="shrink-0">Sales History</TabsTrigger>
+            <TabsTrigger value="stats" className="shrink-0">Statistics</TabsTrigger>
+            <TabsTrigger value="setup" className="shrink-0">Sale Setup</TabsTrigger>
           </TabsList>
 
           <TabsContent value="breaks">
@@ -660,8 +691,8 @@ const Admin = () => {
               </Select>
             </div>
 
-            {/* TCG database search -- single cards only */}
-            {itemType === "card" && (
+            {/* TCG database search -- single cards and slabs only (a slab is still a specific card) */}
+            {(itemType === "card" || isSlab) && (
               <div className="space-y-2">
                 <Label>Search Pokémon TCG Database</Label>
                 <div className="flex gap-2">
@@ -815,14 +846,14 @@ const Admin = () => {
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder={itemType === "card" ? "Charizard ex" : itemType === "sealed_product" ? "Obsidian Flames Booster Box" : "Sleeves, Playmat, Binder..."}
+                  placeholder={itemType === "card" || isSlab ? "Charizard ex" : itemType === "sealed_product" ? "Obsidian Flames Booster Box" : "Sleeves, Playmat, Binder..."}
                 />
               </div>
               <div>
                 <Label>Set</Label>
                 <ComboSelect value={cardSet} onChange={setCardSet} options={knownCardSets} placeholder="Obsidian Flames, Base Set..." />
               </div>
-              {itemType === "card" && (
+              {(itemType === "card" || isSlab) && (
                 <>
                   <div>
                     <Label>Card #</Label>
@@ -885,6 +916,57 @@ const Admin = () => {
                 </div>
                 <Switch checked={isVintage} onCheckedChange={setIsVintage} />
               </div>
+              <div>
+                <Label>Visual Tier</Label>
+                <Select value={visualTier} onValueChange={setVisualTier}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {VISUAL_TIERS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">Gold/Holo add an animated shimmer ring to the listing tile.</p>
+              </div>
+              {isSlab && (
+                <>
+                  <div className="col-span-1 sm:col-span-2 rounded-lg border border-border p-3 bg-background/40 text-xs text-muted-foreground">
+                    Slabs show up on the dedicated <span className="font-semibold text-foreground">/slabs</span> page instead of the main storefront grid.
+                  </div>
+                  <div>
+                    <Label>Grading Company</Label>
+                    <Select value={gradingCompany} onValueChange={setGradingCompany}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {GRADING_COMPANIES.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Grade</Label>
+                    <Input value={grade} onChange={(e) => setGrade(e.target.value)} placeholder="10, 9.5, 10 Pristine..." />
+                  </div>
+                  <div>
+                    <Label>Cert Number</Label>
+                    <Input value={certNumber} onChange={(e) => setCertNumber(e.target.value)} placeholder="12345678" />
+                  </div>
+                  <div>
+                    <Label>Population Count</Label>
+                    <Input type="number" inputMode="numeric" min={0} value={populationCount} onChange={(e) => setPopulationCount(e.target.value)} placeholder="8" />
+                  </div>
+                  <div className="col-span-1 sm:col-span-2">
+                    <Label>Population Note</Label>
+                    <Input value={populationNote} onChange={(e) => setPopulationNote(e.target.value)} placeholder="as of Jul 2026, 2 higher..." />
+                  </div>
+                  <div className="col-span-1 sm:col-span-2">
+                    <Label>Slab Description</Label>
+                    <Textarea
+                      value={slabDescription}
+                      onChange={(e) => setSlabDescription(e.target.value)}
+                      placeholder="What makes this specific copy exciting — centering, surface, why this grade/pop matters..."
+                      rows={3}
+                    />
+                  </div>
+                </>
+              )}
             </div>
 
             <Button
@@ -950,7 +1032,10 @@ const Admin = () => {
                 const cardClaims = claimsForCard(c.id);
                 return (
                   <div key={c.id} className="rounded-lg border border-border bg-background/40 overflow-hidden">
-                    <div className="flex items-center gap-3 p-2">
+                    {/* flex-wrap so the action buttons drop to their own row on
+                        narrow screens instead of squeezing the name/details
+                        column down to a couple of truncated characters. */}
+                    <div className="flex flex-wrap items-center gap-3 p-2">
                       {(c.photo_url || c.video_url) && (
                         <div className="w-12 h-16 flex-shrink-0 rounded overflow-hidden bg-muted flex items-center justify-center">
                           {c.video_url ? (
@@ -963,7 +1048,7 @@ const Admin = () => {
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold truncate">
                           {c.name}
-                          {c.item_type !== "card" && (
+                          {c.item_type !== "card" && c.item_type !== "slab" && (
                             <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full align-middle bg-secondary text-secondary-foreground">
                               {ITEM_TYPES.find((t) => t.value === c.item_type)?.label ?? c.item_type}
                             </span>
@@ -978,6 +1063,19 @@ const Admin = () => {
                               Vintage
                             </span>
                           )}
+                          {c.item_type === "slab" && (
+                            <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full align-middle gradient-gold text-primary-foreground">
+                              {[c.grading_company, c.grade].filter(Boolean).join(" ") || "Slab"}
+                            </span>
+                          )}
+                          {c.item_type !== "slab" && c.visual_tier !== "standard" && (
+                            <span className={cn(
+                              "ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full align-middle",
+                              c.visual_tier === "top_grade" ? "gradient-gold text-primary-foreground" : "slab-ring-holo text-white"
+                            )}>
+                              {VISUAL_TIERS.find((t) => t.value === c.visual_tier)?.label}
+                            </span>
+                          )}
                           {c.language && c.language !== "English" && (
                             <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full align-middle bg-secondary text-secondary-foreground">
                               {c.language}
@@ -987,6 +1085,7 @@ const Admin = () => {
                         <p className="text-xs text-muted-foreground">
                           {c.card_set || "—"} • {CURRENCY}{Number(c.price).toFixed(0)} • {c.condition || "N/A"}
                           {c.category ? ` • ${c.category}` : ""}
+                          {c.item_type === "slab" && c.population_count != null ? ` • Pop ${c.population_count}` : ""}
                         </p>
                         {(c.card_number || c.rarity) && (
                           <p className="text-xs text-muted-foreground">
@@ -998,7 +1097,7 @@ const Admin = () => {
                           {c.quantity_available} / {c.quantity_total} in stock
                         </p>
                       </div>
-                      <div className="flex gap-1">
+                      <div className="flex gap-1 w-full justify-end sm:w-auto">
                         <Button size="icon" variant="ghost" onClick={() => duplicateListing(c)} title="Duplicate as a new listing">
                           <Copy className="w-4 h-4 text-muted-foreground" />
                         </Button>
@@ -1050,6 +1149,10 @@ const Admin = () => {
 
           <TabsContent value="sales">
             <SalesHistory />
+          </TabsContent>
+
+          <TabsContent value="stats">
+            <AnalyticsDashboard />
           </TabsContent>
         </Tabs>
       </main>

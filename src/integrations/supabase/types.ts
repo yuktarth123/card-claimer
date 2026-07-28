@@ -135,8 +135,11 @@ export type Database = {
           card_number: string | null
           card_set: string | null
           category: string | null
+          cert_number: string | null
           condition: string | null
           created_at: string
+          grade: string | null
+          grading_company: string | null
           id: string
           is_preorder: boolean
           is_vintage: boolean
@@ -145,21 +148,28 @@ export type Database = {
           name: string
           photo_url: string | null
           photo_urls: string[]
+          population_count: number | null
+          population_note: string | null
           pre_sale_price: number | null
           price: number
           quantity_available: number
           quantity_total: number
           rarity: string | null
           sale_price: number | null
+          slab_description: string | null
           tcg_image_url: string | null
           video_url: string | null
+          visual_tier: string
         }
         Insert: {
           card_number?: string | null
           card_set?: string | null
           category?: string | null
+          cert_number?: string | null
           condition?: string | null
           created_at?: string
+          grade?: string | null
+          grading_company?: string | null
           id?: string
           is_preorder?: boolean
           is_vintage?: boolean
@@ -168,21 +178,28 @@ export type Database = {
           name: string
           photo_url?: string | null
           photo_urls?: string[]
+          population_count?: number | null
+          population_note?: string | null
           pre_sale_price?: number | null
           price?: number
           quantity_available?: number
           quantity_total?: number
           rarity?: string | null
           sale_price?: number | null
+          slab_description?: string | null
           tcg_image_url?: string | null
           video_url?: string | null
+          visual_tier?: string
         }
         Update: {
           card_number?: string | null
           card_set?: string | null
           category?: string | null
+          cert_number?: string | null
           condition?: string | null
           created_at?: string
+          grade?: string | null
+          grading_company?: string | null
           id?: string
           is_preorder?: boolean
           is_vintage?: boolean
@@ -191,14 +208,18 @@ export type Database = {
           name?: string
           photo_url?: string | null
           photo_urls?: string[]
+          population_count?: number | null
+          population_note?: string | null
           pre_sale_price?: number | null
           price?: number
           quantity_available?: number
           quantity_total?: number
           rarity?: string | null
           sale_price?: number | null
+          slab_description?: string | null
           tcg_image_url?: string | null
           video_url?: string | null
+          visual_tier?: string
         }
         Relationships: []
       }
@@ -396,11 +417,87 @@ export type Database = {
           },
         ]
       }
+      site_visits: {
+        Row: {
+          browser: string | null
+          browser_version: string | null
+          created_at: string
+          device_type: string
+          entry_path: string
+          id: string
+          last_seen_at: string
+          os: string | null
+          referrer: string | null
+          user_agent: string | null
+          visitor_id: string
+        }
+        Insert: {
+          browser?: string | null
+          browser_version?: string | null
+          created_at?: string
+          device_type: string
+          entry_path: string
+          id?: string
+          last_seen_at?: string
+          os?: string | null
+          referrer?: string | null
+          user_agent?: string | null
+          visitor_id: string
+        }
+        Update: {
+          browser?: string | null
+          browser_version?: string | null
+          created_at?: string
+          device_type?: string
+          entry_path?: string
+          id?: string
+          last_seen_at?: string
+          os?: string | null
+          referrer?: string | null
+          user_agent?: string | null
+          visitor_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      get_visitor_overview: {
+        Args: { _days?: number }
+        Returns: {
+          total_visits: number
+          unique_visitors: number
+          avg_duration_seconds: number
+          visits_today: number
+          visits_last_7_days: number
+        }[]
+      }
+      get_device_breakdown: {
+        Args: { _days?: number }
+        Returns: { device_type: string; visits: number }[]
+      }
+      get_browser_breakdown: {
+        Args: { _days?: number }
+        Returns: { browser: string; visits: number }[]
+      }
+      get_os_breakdown: {
+        Args: { _days?: number }
+        Returns: { os: string; visits: number }[]
+      }
+      get_daily_visits: {
+        Args: { _days?: number }
+        Returns: { visit_date: string; visits: number; unique_visitors: number }[]
+      }
+      get_top_entry_pages: {
+        Args: { _days?: number }
+        Returns: { entry_path: string; visits: number }[]
+      }
+      get_referrer_breakdown: {
+        Args: { _days?: number }
+        Returns: { referrer: string; visits: number }[]
+      }
       admin_release_claim: { Args: { _claim_id: string }; Returns: undefined }
       admin_release_break_slot_claim: { Args: { _claim_id: string }; Returns: undefined }
       admin_mark_break_slot_sold: {

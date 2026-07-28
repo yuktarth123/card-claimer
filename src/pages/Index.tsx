@@ -6,7 +6,7 @@ import { NameGate } from "@/components/NameGate";
 import { CheckoutSheet } from "@/components/CheckoutSheet";
 import { useBuyer } from "@/hooks/useBuyer";
 import { toast } from "sonner";
-import { Zap, Trophy, Search, X, Truck, SlidersHorizontal, History, PackageOpen } from "lucide-react";
+import { Zap, Trophy, Search, X, Truck, SlidersHorizontal, History, PackageOpen, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link } from "react-router-dom";
@@ -42,6 +42,7 @@ const Index = () => {
   const [itemTypeFilter, setItemTypeFilter] = useState(ALL);
   const [cardSetFilter, setCardSetFilter] = useState(ALL);
   const [categoryFilter, setCategoryFilter] = useState(ALL);
+  const [rarityFilter, setRarityFilter] = useState(ALL);
   const [conditionFilter, setConditionFilter] = useState(ALL);
   const [preorderOnly, setPreorderOnly] = useState(false);
   const [vintageOnly, setVintageOnly] = useState(false);
@@ -60,9 +61,11 @@ const Index = () => {
     let mounted = true;
 
     const fetchInitialData = async () => {
+      // Slabs live on their own /slabs page, not mixed into this grid.
       const { data: cardsData, error: cardsError } = await supabase
         .from("cards")
         .select("*")
+        .neq("item_type", "slab")
         .order("created_at", { ascending: false });
 
       if (mounted && cardsData) setCards(cardsData);
@@ -108,10 +111,14 @@ const Index = () => {
         (payload) => {
           setCards((prev) => {
             if (payload.eventType === "INSERT") {
-              return [payload.new as Card, ...prev];
+              const next = payload.new as Card;
+              return next.item_type === "slab" ? prev : [next, ...prev];
             }
             if (payload.eventType === "UPDATE") {
               const next = payload.new as Card;
+              if (next.item_type === "slab") {
+                return prev.filter((c) => c.id !== next.id);
+              }
               const exists = prev.some((c) => c.id === next.id);
               return exists ? prev.map((c) => (c.id === next.id ? next : c)) : [next, ...prev];
             }
@@ -191,6 +198,14 @@ const Index = () => {
     () => Array.from(new Set(cards.map((c) => c.category).filter(Boolean))).sort((a, b) => a.localeCompare(b)) as string[],
     [cards]
   );
+  // Pulled from whatever's actually listed rather than a fixed enum --
+  // Pokemon rarities keep growing (Common/Uncommon/Rare, then Double Rare,
+  // ACE SPEC, Illustration Rare, Special Illustration Rare, Hyper Rare, and
+  // whatever the next set introduces), so a hardcoded list would go stale.
+  const availableRarities = useMemo(
+    () => Array.from(new Set(cards.map((c) => c.rarity).filter(Boolean))).sort((a, b) => a.localeCompare(b)) as string[],
+    [cards]
+  );
   const availableItemTypes = useMemo(
     () => ITEM_TYPES.filter((t) => cards.some((c) => c.item_type === t.value)),
     [cards]
@@ -200,6 +215,7 @@ const Index = () => {
     itemTypeFilter !== ALL ||
     cardSetFilter !== ALL ||
     categoryFilter !== ALL ||
+    rarityFilter !== ALL ||
     conditionFilter !== ALL ||
     preorderOnly ||
     vintageOnly;
@@ -214,6 +230,7 @@ const Index = () => {
     setItemTypeFilter(ALL);
     setCardSetFilter(ALL);
     setCategoryFilter(ALL);
+    setRarityFilter(ALL);
     setConditionFilter(ALL);
     setPreorderOnly(false);
     setVintageOnly(false);
@@ -238,6 +255,7 @@ const Index = () => {
     if (itemTypeFilter !== ALL) filteredCards = filteredCards.filter((c) => c.item_type === itemTypeFilter);
     if (cardSetFilter !== ALL) filteredCards = filteredCards.filter((c) => c.card_set === cardSetFilter);
     if (categoryFilter !== ALL) filteredCards = filteredCards.filter((c) => c.category === categoryFilter);
+    if (rarityFilter !== ALL) filteredCards = filteredCards.filter((c) => c.rarity === rarityFilter);
     if (conditionFilter !== ALL) filteredCards = filteredCards.filter((c) => c.condition === conditionFilter);
     if (preorderOnly) filteredCards = filteredCards.filter((c) => c.is_preorder);
     if (vintageOnly) filteredCards = filteredCards.filter((c) => c.is_vintage);
@@ -249,7 +267,7 @@ const Index = () => {
     }
 
     return filteredCards;
-  }, [cards, filter, myClaimsByCard, sortOrder, search, itemTypeFilter, cardSetFilter, categoryFilter, conditionFilter, preorderOnly, vintageOnly]);
+  }, [cards, filter, myClaimsByCard, sortOrder, search, itemTypeFilter, cardSetFilter, categoryFilter, rarityFilter, conditionFilter, preorderOnly, vintageOnly]);
 
   const totalListedValue = useMemo(() => {
     return cards.reduce((sum, card) => sum + Number(card.price) * card.quantity_available, 0);
@@ -322,16 +340,22 @@ const Index = () => {
       <header className="relative overflow-hidden border-b border-border">
         <div className="absolute inset-0 gradient-hero opacity-30" />
         <div className="relative container py-8 md:py-12">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-10 h-10 rounded-xl gradient-gold flex items-center justify-center shadow-glow">
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <div className="w-10 h-10 rounded-xl gradient-gold flex items-center justify-center shadow-glow shrink-0">
               <AppLogo className="w-full h-full" alt={`${SELLER_NAME} Logo`} />
             </div>
             <span className="font-display font-bold tracking-wide text-base uppercase text-foreground">
               {SELLER_NAME}
             </span>
             <Link
+              to="/slabs"
+              className="sm:ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full slab-ring-gold animate-gradient-pan text-sm font-bold text-primary-foreground hover:opacity-90 transition"
+            >
+              <Award className="w-4 h-4" /> Slabs
+            </Link>
+            <Link
               to="/breaks"
-              className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/15 border border-primary/30 text-sm font-semibold text-primary hover:bg-primary/25 transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/15 border border-primary/30 text-sm font-semibold text-primary hover:bg-primary/25 transition"
             >
               <PackageOpen className="w-4 h-4" /> Box Breaks
             </Link>
@@ -458,6 +482,15 @@ const Index = () => {
               <SelectContent>
                 <SelectItem value={ALL}>Any category</SelectItem>
                 {availableCategories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
+          {availableRarities.length > 0 && (
+            <Select value={rarityFilter} onValueChange={setRarityFilter}>
+              <SelectTrigger className="w-[150px]"><SelectValue placeholder="Rarity" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>Any rarity</SelectItem>
+                {availableRarities.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
               </SelectContent>
             </Select>
           )}

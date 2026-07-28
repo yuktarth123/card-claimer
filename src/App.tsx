@@ -7,9 +7,11 @@ import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Admin from "./pages/Admin.tsx";
 import Leaderboard from "./pages/Leaderboard.tsx";
+import Slabs from "./pages/Slabs.tsx";
 import BoxBreaks from "./pages/BoxBreaks.tsx";
 import LiveBreak from "./pages/LiveBreak.tsx";
 import LiveBreakChat from "./pages/LiveBreakChat.tsx";
+import { AnalyticsTracker } from "./components/AnalyticsTracker.tsx";
 
 const queryClient = new QueryClient();
 
@@ -18,11 +20,13 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <AnalyticsTracker />
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/slabs" element={<Slabs />} />
           <Route path="/breaks" element={<BoxBreaks />} />
           <Route path="/breaks/:breakId" element={<LiveBreak />} />
           <Route path="/breaks/:breakId/chat" element={<LiveBreakChat />} />

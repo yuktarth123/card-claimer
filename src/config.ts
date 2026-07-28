@@ -23,11 +23,14 @@ export const CARD_CONDITIONS = [
   "Damaged",
 ] as const;
 
-// What kind of listing this is. "card" gets the full single-card fields
-// (TCG database search, card number, rarity); sealed product and
-// accessories skip those since they don't apply.
+// What kind of listing this is. "card" and "slab" both get the full
+// single-card fields (TCG database search, card number, rarity) since a
+// slab is still a specific card, just graded/encapsulated -- it additionally
+// gets the grading fields (see GRADING_COMPANIES/VISUAL_TIERS below).
+// Sealed product and accessories skip the card-identity fields entirely.
 export const ITEM_TYPES = [
   { value: "card", label: "Single Card" },
+  { value: "slab", label: "Graded Slab" },
   { value: "sealed_product", label: "Sealed Product (Box / Pack / ETB / Tin)" },
   { value: "accessory", label: "Accessory / Other" },
 ] as const;
@@ -36,5 +39,23 @@ export const ITEM_TYPES = [
 // Videos are compressed client-side before upload to try to stay under this,
 // but very long/high-res clips can still exceed it after compression.
 export const MAX_VIDEO_SIZE_BYTES = 50 * 1024 * 1024;
+
+// Slabs (graded cards). Grade itself stays free text in the form (see
+// EditCardDialog/Admin) since scales differ across companies -- PSA/BGS/SGC
+// top out at "10", CGC's top grade is "10 Pristine", BGS also has "10 Black
+// Label" above plain "10". Trying to encode that as one shared enum caused
+// more special-casing than it saved.
+export const GRADING_COMPANIES = ["PSA", "CGC", "BGS", "SGC", "Other"] as const;
+
+// Visual tier is set by the admin per listing (any listing type, not just
+// slabs) rather than derived automatically -- keeps editorial control over
+// which listings get the standout shimmer treatment. Values stay top_grade/
+// low_pop for historical reasons (originated as slab-only), but they apply
+// to any listing now.
+export const VISUAL_TIERS = [
+  { value: "standard", label: "Standard" },
+  { value: "top_grade", label: "Gold Shimmer" },
+  { value: "low_pop", label: "Holo Shimmer" },
+] as const;
 
 // SALE_START_TIME is now managed via the Admin UI and stored in Supabase.

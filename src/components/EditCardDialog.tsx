@@ -11,11 +11,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Camera, X, Loader2, Video } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
-import { CURRENCY, CARD_CONDITIONS, ITEM_TYPES, PREORDER_MIN_DAYS, PREORDER_MAX_DAYS } from "@/config";
+import { CURRENCY, CARD_CONDITIONS, ITEM_TYPES, PREORDER_MIN_DAYS, PREORDER_MAX_DAYS, GRADING_COMPANIES, VISUAL_TIERS } from "@/config";
 import { AdditionalPhotosField } from "@/components/AdditionalPhotosField";
 import { prepareVideoForUpload, isPayloadTooLargeError } from "@/lib/videoUpload";
 
@@ -42,6 +43,13 @@ export function EditCardDialog({ card, open, onOpenChange, onSave }: EditCardDia
   const [salePrice, setSalePrice] = useState("");
   const [quantityTotal, setQuantityTotal] = useState("1");
   const [condition, setCondition] = useState<string>(CARD_CONDITIONS[0]);
+  const [gradingCompany, setGradingCompany] = useState<string>(GRADING_COMPANIES[0]);
+  const [grade, setGrade] = useState("");
+  const [certNumber, setCertNumber] = useState("");
+  const [populationCount, setPopulationCount] = useState("");
+  const [populationNote, setPopulationNote] = useState("");
+  const [slabDescription, setSlabDescription] = useState("");
+  const [visualTier, setVisualTier] = useState<string>("standard");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [existingPhotoUrl, setExistingPhotoUrl] = useState<string | null>(null);
@@ -54,6 +62,7 @@ export function EditCardDialog({ card, open, onOpenChange, onSave }: EditCardDia
 
   const photoFileRef = useRef<HTMLInputElement>(null);
   const videoFileRef = useRef<HTMLInputElement>(null);
+  const isSlab = itemType === "slab";
 
   useEffect(() => {
     if (card) {
@@ -70,6 +79,13 @@ export function EditCardDialog({ card, open, onOpenChange, onSave }: EditCardDia
       setSalePrice(card.sale_price !== null ? String(card.sale_price) : "");
       setQuantityTotal(String(card.quantity_total));
       setCondition(card.condition || CARD_CONDITIONS[0]);
+      setGradingCompany(card.grading_company || GRADING_COMPANIES[0]);
+      setGrade(card.grade || "");
+      setCertNumber(card.cert_number || "");
+      setPopulationCount(card.population_count != null ? String(card.population_count) : "");
+      setPopulationNote(card.population_note || "");
+      setSlabDescription(card.slab_description || "");
+      setVisualTier(card.visual_tier || "standard");
       setPhotoPreview(card.photo_url || null);
       setExistingPhotoUrl(card.photo_url || null);
       setExtraPhotoUrls(card.photo_urls ?? []);
@@ -192,8 +208,8 @@ export function EditCardDialog({ card, open, onOpenChange, onSave }: EditCardDia
         name: name.trim(),
         item_type: itemType,
         card_set: cardSet.trim() || null,
-        card_number: itemType === "card" ? cardNumber.trim() || null : null,
-        rarity: itemType === "card" ? rarity.trim() || null : null,
+        card_number: itemType === "card" || isSlab ? cardNumber.trim() || null : null,
+        rarity: itemType === "card" || isSlab ? rarity.trim() || null : null,
         category: category.trim() || null,
         language: language.trim() || "English",
         is_preorder: isPreorder,
@@ -206,6 +222,13 @@ export function EditCardDialog({ card, open, onOpenChange, onSave }: EditCardDia
         photo_url: newPhotoUrl,
         photo_urls: extraPhotoUrls,
         video_url: newVideoUrl,
+        grading_company: isSlab ? gradingCompany : null,
+        grade: isSlab ? grade.trim() || null : null,
+        cert_number: isSlab ? certNumber.trim() || null : null,
+        population_count: isSlab && populationCount.trim() ? Math.max(0, Math.floor(Number(populationCount))) : null,
+        population_note: isSlab ? populationNote.trim() || null : null,
+        slab_description: isSlab ? slabDescription.trim() || null : null,
+        visual_tier: visualTier,
       })
       .eq("id", card.id);
 
@@ -247,7 +270,7 @@ export function EditCardDialog({ card, open, onOpenChange, onSave }: EditCardDia
             <Input id="card-set" value={cardSet} onChange={(e) => setCardSet(e.target.value)} className="col-span-3" placeholder="Obsidian Flames, Base Set..." />
           </div>
 
-          {itemType === "card" && (
+          {(itemType === "card" || isSlab) && (
             <>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="card-number" className="text-right">Card #</Label>
@@ -336,6 +359,60 @@ export function EditCardDialog({ card, open, onOpenChange, onSave }: EditCardDia
               </SelectContent>
             </Select>
           </div>
+
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="visual-tier" className="text-right">Visual Tier</Label>
+            <div className="col-span-3">
+              <Select value={visualTier} onValueChange={setVisualTier}>
+                <SelectTrigger id="visual-tier"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {VISUAL_TIERS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">Gold/Holo add an animated shimmer ring to the listing tile.</p>
+            </div>
+          </div>
+
+          {isSlab && (
+            <>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="grading-company" className="text-right">Grading Co.</Label>
+                <Select value={gradingCompany} onValueChange={setGradingCompany}>
+                  <SelectTrigger id="grading-company" className="col-span-3"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {GRADING_COMPANIES.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="grade" className="text-right">Grade</Label>
+                <Input id="grade" value={grade} onChange={(e) => setGrade(e.target.value)} className="col-span-3" placeholder="10, 9.5, 10 Pristine..." />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="cert-number" className="text-right">Cert #</Label>
+                <Input id="cert-number" value={certNumber} onChange={(e) => setCertNumber(e.target.value)} className="col-span-3" placeholder="12345678" />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="population-count" className="text-right">Pop Count</Label>
+                <Input id="population-count" type="number" inputMode="numeric" min={0} value={populationCount} onChange={(e) => setPopulationCount(e.target.value)} className="col-span-3" placeholder="8" />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="population-note" className="text-right">Pop Note</Label>
+                <Input id="population-note" value={populationNote} onChange={(e) => setPopulationNote(e.target.value)} className="col-span-3" placeholder="as of Jul 2026, 2 higher..." />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="slab-description" className="text-right">Description</Label>
+                <Textarea
+                  id="slab-description"
+                  value={slabDescription}
+                  onChange={(e) => setSlabDescription(e.target.value)}
+                  className="col-span-3"
+                  rows={3}
+                  placeholder="What makes this specific copy exciting..."
+                />
+              </div>
+            </>
+          )}
 
           <div className="grid grid-cols-4 items-center gap-4">
             <Label className="text-right">Photo</Label>

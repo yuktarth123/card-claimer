@@ -50,6 +50,14 @@ All colors MUST be HSL.
     --shadow-card: 0 12px 32px -12px hsl(240 50% 3% / 0.6);
     --shadow-claim: 0 0 30px hsl(142 70% 45% / 0.5);
 
+    /* Slab tile rings -- top_grade (gold) vs low_pop (holo/prismatic), see
+       VISUAL_TIERS in config.ts. Panning linear-gradient rather than a
+       rotating conic one: same shimmer read, much broader browser support. */
+    --gradient-slab-gold: linear-gradient(120deg, hsl(45 100% 50%), hsl(38 100% 65%), hsl(50 100% 78%), hsl(38 100% 65%), hsl(45 100% 50%));
+    --gradient-slab-holo: linear-gradient(120deg, hsl(280 90% 65%), hsl(190 95% 60%), hsl(330 90% 65%), hsl(150 80% 55%), hsl(280 90% 65%));
+    --shadow-slab-gold: 0 0 26px hsl(45 100% 55% / 0.45);
+    --shadow-slab-holo: 0 0 26px hsl(280 90% 65% / 0.4);
+
     --sidebar-background: 0 0% 98%;
 
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -95,4 +103,6 @@ All colors MUST be HSL.
   .shadow-card-pop { box-shadow: var(--shadow-card); }
   .shadow-claim { box-shadow: var(--shadow-claim); }
   .text-balance { text-wrap: balance; }
+  .slab-ring-gold { background: var(--gradient-slab-gold); background-size: 200% 200%; box-shadow: var(--shadow-slab-gold); }
+  .slab-ring-holo { background: var(--gradient-slab-holo); background-size: 200% 200%; box-shadow: var(--shadow-slab-holo); }
 }

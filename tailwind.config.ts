@@ -98,6 +98,10 @@ export default {
           from: { opacity: "0", transform: "translateY(8px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
+        "gradient-pan": {
+          "0%, 100%": { backgroundPosition: "0% 50%" },
+          "50%": { backgroundPosition: "100% 50%" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -105,6 +109,7 @@ export default {
         "pulse-glow": "pulse-glow 2s ease-out infinite",
         "claim-pop": "claim-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
         "fade-in": "fade-in 0.3s ease-out",
+        "gradient-pan": "gradient-pan 3s ease infinite",
       },
     },
   },
