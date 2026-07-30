@@ -122,25 +122,29 @@ const Index = () => {
       <header className="relative overflow-hidden border-b border-border">
         <div className="absolute inset-0 gradient-hero opacity-30" />
         <div className="relative container py-8 md:py-12">
-          <div className="flex flex-wrap items-center gap-2 mb-2">
-            <div className="w-10 h-10 rounded-xl gradient-gold flex items-center justify-center shadow-glow shrink-0">
-              <AppLogo className="w-full h-full" alt={`${SELLER_NAME} Logo`} />
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-xl gradient-gold flex items-center justify-center shadow-glow shrink-0">
+                <AppLogo className="w-full h-full" alt={`${SELLER_NAME} Logo`} />
+              </div>
+              <span className="font-display font-bold tracking-wide text-base uppercase text-foreground">
+                {SELLER_NAME}
+              </span>
             </div>
-            <span className="font-display font-bold tracking-wide text-base uppercase text-foreground">
-              {SELLER_NAME}
-            </span>
-            <Link
-              to="/breaks"
-              className="sm:ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/15 border border-primary/30 text-sm font-semibold text-primary hover:bg-primary/25 transition"
-            >
-              <PackageOpen className="w-4 h-4" /> Box Breaks
-            </Link>
-            <Link
-              to="/leaderboard"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/15 border border-primary/30 text-sm font-semibold text-primary hover:bg-primary/25 transition"
-            >
-              <Trophy className="w-4 h-4" /> Leaderboard
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                to="/breaks"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/15 border border-primary/30 text-sm font-semibold text-primary hover:bg-primary/25 transition"
+              >
+                <PackageOpen className="w-4 h-4" /> <span className="hidden sm:inline">Box Breaks</span>
+              </Link>
+              <Link
+                to="/leaderboard"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/15 border border-primary/30 text-sm font-semibold text-primary hover:bg-primary/25 transition"
+              >
+                <Trophy className="w-4 h-4" /> <span className="hidden sm:inline">Leaderboard</span>
+              </Link>
+            </div>
           </div>
           <h1 className="text-3xl md:text-5xl font-black text-balance">
             Pokémon Cards <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Live Sale</span>
