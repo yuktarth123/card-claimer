@@ -94,7 +94,10 @@ const Slabs = () => {
         <div className="absolute inset-0 gradient-hero opacity-20" />
         <div className="relative container py-8 md:py-12">
           <div className="flex items-center gap-3 mb-4">
-            <Link to="/" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+            <Link
+              to="/"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/15 border border-primary/30 text-sm font-semibold text-primary hover:bg-primary/25 transition"
+            >
               <ChevronLeft className="w-4 h-4" /> Back to Store
             </Link>
             <div className="ml-auto flex items-center gap-2">
