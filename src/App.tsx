@@ -8,6 +8,9 @@ import NotFound from "./pages/NotFound.tsx";
 import Admin from "./pages/Admin.tsx";
 import Leaderboard from "./pages/Leaderboard.tsx";
 import Slabs from "./pages/Slabs.tsx";
+import Singles from "./pages/Singles.tsx";
+import Sealed from "./pages/Sealed.tsx";
+import Accessories from "./pages/Accessories.tsx";
 import BoxBreaks from "./pages/BoxBreaks.tsx";
 import LiveBreak from "./pages/LiveBreak.tsx";
 import LiveBreakChat from "./pages/LiveBreakChat.tsx";
@@ -27,6 +30,9 @@ const App = () => (
           <Route path="/admin" element={<Admin />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/slabs" element={<Slabs />} />
+          <Route path="/singles" element={<Singles />} />
+          <Route path="/sealed" element={<Sealed />} />
+          <Route path="/accessories" element={<Accessories />} />
           <Route path="/breaks" element={<BoxBreaks />} />
           <Route path="/breaks/:breakId" element={<LiveBreak />} />
           <Route path="/breaks/:breakId/chat" element={<LiveBreakChat />} />

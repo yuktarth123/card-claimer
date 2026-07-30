@@ -6,20 +6,20 @@ import { CategoryGrid } from "@/components/CategoryGrid";
 import { useBuyer } from "@/hooks/useBuyer";
 import { useCategoryListing } from "@/hooks/useCategoryListing";
 import { toast } from "sonner";
-import { ChevronLeft, Search, X, SlidersHorizontal } from "lucide-react";
+import { ChevronLeft, Search, X, Truck, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import AppLogo from "@/components/AppLogo";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { SELLER_NAME, VISUAL_TIERS } from "@/config";
+import { CARD_CONDITIONS, SELLER_NAME } from "@/config";
 import { CATEGORY_META } from "@/lib/categoryMeta";
 import { cn } from "@/lib/utils";
 
 type SortOrder = "none" | "price-asc" | "price-desc";
 const ALL = "__all__";
-const meta = CATEGORY_META.slab;
+const meta = CATEGORY_META.accessory;
 
-const Slabs = () => {
+const Accessories = () => {
   const { name, phone, setIdentity } = useBuyer();
   const {
     cards,
@@ -30,31 +30,28 @@ const Slabs = () => {
     refetchClaims,
     handleClaim,
     handleUnclaim,
-  } = useCategoryListing("slab");
+  } = useCategoryListing("accessory");
 
   const [search, setSearch] = useState("");
-  const [gradingCompanyFilter, setGradingCompanyFilter] = useState(ALL);
-  const [rarityFilter, setRarityFilter] = useState(ALL);
-  const [visualTierFilter, setVisualTierFilter] = useState(ALL);
-  const [sortOrder, setSortOrder] = useState<SortOrder>("none");
+  const [categoryFilter, setCategoryFilter] = useState(ALL);
+  const [conditionFilter, setConditionFilter] = useState(ALL);
+  const [preorderOnly, setPreorderOnly] = useState(false);
+  const [sortOrder, setSortOrder] = useState<SortOrder>("price-desc");
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  const availableGradingCompanies = useMemo(
-    () => Array.from(new Set(cards.map((c) => c.grading_company).filter(Boolean))).sort((a, b) => a.localeCompare(b)) as string[],
-    [cards]
-  );
-  const availableRarities = useMemo(
-    () => Array.from(new Set(cards.map((c) => c.rarity).filter(Boolean))).sort((a, b) => a.localeCompare(b)) as string[],
+  const availableCategories = useMemo(
+    () => Array.from(new Set(cards.map((c) => c.category).filter(Boolean))).sort((a, b) => a.localeCompare(b)) as string[],
     [cards]
   );
 
-  const hasActiveFilters = search.trim() !== "" || gradingCompanyFilter !== ALL || rarityFilter !== ALL || visualTierFilter !== ALL;
+  const hasActiveFilters =
+    search.trim() !== "" || categoryFilter !== ALL || conditionFilter !== ALL || preorderOnly;
 
   const clearFilters = () => {
     setSearch("");
-    setGradingCompanyFilter(ALL);
-    setRarityFilter(ALL);
-    setVisualTierFilter(ALL);
+    setCategoryFilter(ALL);
+    setConditionFilter(ALL);
+    setPreorderOnly(false);
   };
 
   const visible = useMemo(() => {
@@ -63,12 +60,12 @@ const Slabs = () => {
     const q = search.trim().toLowerCase();
     if (q) {
       filteredCards = filteredCards.filter((c) =>
-        [c.name, c.card_set, c.card_number, c.rarity, c.grading_company, c.grade].filter(Boolean).some((f) => f!.toLowerCase().includes(q))
+        [c.name, c.category].filter(Boolean).some((f) => f!.toLowerCase().includes(q))
       );
     }
-    if (gradingCompanyFilter !== ALL) filteredCards = filteredCards.filter((c) => c.grading_company === gradingCompanyFilter);
-    if (rarityFilter !== ALL) filteredCards = filteredCards.filter((c) => c.rarity === rarityFilter);
-    if (visualTierFilter !== ALL) filteredCards = filteredCards.filter((c) => c.visual_tier === visualTierFilter);
+    if (categoryFilter !== ALL) filteredCards = filteredCards.filter((c) => c.category === categoryFilter);
+    if (conditionFilter !== ALL) filteredCards = filteredCards.filter((c) => c.condition === conditionFilter);
+    if (preorderOnly) filteredCards = filteredCards.filter((c) => c.is_preorder);
 
     if (sortOrder === "price-asc") {
       filteredCards = [...filteredCards].sort((a, b) => Number(a.price) - Number(b.price));
@@ -77,7 +74,7 @@ const Slabs = () => {
     }
 
     return filteredCards;
-  }, [cards, search, gradingCompanyFilter, rarityFilter, visualTierFilter, sortOrder]);
+  }, [cards, search, categoryFilter, conditionFilter, preorderOnly, sortOrder]);
 
   return (
     <div className="min-h-screen pb-28">
@@ -105,8 +102,8 @@ const Slabs = () => {
             </div>
           </div>
           <h1 className="text-3xl md:text-5xl font-black text-balance flex items-center gap-3">
-            <meta.icon className="w-8 h-8 md:w-10 md:h-10 text-amber-400" />
-            The Slab Vault
+            <meta.icon className="w-8 h-8 md:w-10 md:h-10 text-primary" />
+            {meta.label}
           </h1>
           <p className="text-muted-foreground mt-2 max-w-xl">{meta.description}</p>
         </div>
@@ -118,7 +115,7 @@ const Slabs = () => {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name, set, grader, or grade…"
+            placeholder="Search by name or category…"
             className="pl-9 pr-9"
           />
           {search && (
@@ -132,45 +129,51 @@ const Slabs = () => {
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 mb-5">
-          <Button size="sm" variant="outline" onClick={() => setFiltersOpen((v) => !v)} className="sm:hidden">
-            <SlidersHorizontal className="w-3.5 h-3.5 mr-1.5" /> Filters
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setFiltersOpen((v) => !v)}
+            className="md:hidden ml-auto"
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5 mr-1.5" />
+            Filters
+            {hasActiveFilters && <span className="ml-1.5 w-1.5 h-1.5 rounded-full bg-primary" />}
           </Button>
+        </div>
 
-          <div className={cn("flex-wrap items-center gap-2 sm:flex", filtersOpen ? "flex" : "hidden")}>
-            {availableGradingCompanies.length > 0 && (
-              <Select value={gradingCompanyFilter} onValueChange={setGradingCompanyFilter}>
-                <SelectTrigger className="w-[140px]"><SelectValue placeholder="Grader" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ALL}>Any grader</SelectItem>
-                  {availableGradingCompanies.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            )}
-            {availableRarities.length > 0 && (
-              <Select value={rarityFilter} onValueChange={setRarityFilter}>
-                <SelectTrigger className="w-[150px]"><SelectValue placeholder="Rarity" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ALL}>Any rarity</SelectItem>
-                  {availableRarities.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            )}
-            <Select value={visualTierFilter} onValueChange={setVisualTierFilter}>
-              <SelectTrigger className="w-[160px]"><SelectValue placeholder="Tier" /></SelectTrigger>
+        <div className={cn("flex-wrap items-center gap-2 mb-5 overflow-x-auto pb-1 md:flex", filtersOpen ? "flex" : "hidden")}>
+          {availableCategories.length > 0 && (
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="w-[150px]"><SelectValue placeholder="Category" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL}>Any tier</SelectItem>
-                {VISUAL_TIERS.filter((t) => t.value !== "standard").map((t) => (
-                  <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                ))}
+                <SelectItem value={ALL}>Any category</SelectItem>
+                {availableCategories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
               </SelectContent>
             </Select>
-            {hasActiveFilters && (
-              <Button size="sm" variant="ghost" onClick={clearFilters} className="text-muted-foreground">
-                <X className="w-3.5 h-3.5 mr-1" /> Clear
-              </Button>
-            )}
-          </div>
+          )}
+          <Select value={conditionFilter} onValueChange={setConditionFilter}>
+            <SelectTrigger className="w-[150px]"><SelectValue placeholder="Condition" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>Any condition</SelectItem>
+              {CARD_CONDITIONS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+            </SelectContent>
+          </Select>
+
+          <Button
+            size="sm"
+            variant={preorderOnly ? "default" : "outline"}
+            onClick={() => setPreorderOnly((v) => !v)}
+            className={preorderOnly ? "bg-secondary hover:bg-secondary/90 text-secondary-foreground font-bold border-0" : ""}
+          >
+            <Truck className="w-3.5 h-3.5 mr-1" /> Pre-Orders
+          </Button>
+
+          {hasActiveFilters && (
+            <Button size="sm" variant="ghost" onClick={clearFilters} className="text-muted-foreground">
+              <X className="w-3.5 h-3.5 mr-1" /> Clear
+            </Button>
+          )}
 
           <div className="ml-auto">
             <Select value={sortOrder} onValueChange={(value: SortOrder) => setSortOrder(value)}>
@@ -207,4 +210,4 @@ const Slabs = () => {
   );
 };
 
-export default Slabs;
+export default Accessories;
