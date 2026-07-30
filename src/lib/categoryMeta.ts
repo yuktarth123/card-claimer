@@ -10,6 +10,11 @@ interface CategoryMeta {
   label: string;
   route: string;
   icon: LucideIcon;
+  // Short -- shown on the narrow homepage hub tiles (2-up on mobile), so it
+  // needs to fit without wrapping past 2 lines at that width.
+  tagline: string;
+  // Longer -- shown on the category page's own header, which has a full
+  // container width to work with.
   description: string;
   emptyMessage: string;
   noMatchMessage: string;
@@ -22,6 +27,7 @@ export const CATEGORY_META: Record<ItemType, CategoryMeta> = {
     label: "Singles",
     route: "/singles",
     icon: Sparkles,
+    tagline: "Individual cards",
     description: "Individual cards, from bulk commons to chase pulls.",
     emptyMessage: "No singles listed yet. Check back soon!",
     noMatchMessage: "No singles match your search or filters.",
@@ -30,6 +36,7 @@ export const CATEGORY_META: Record<ItemType, CategoryMeta> = {
     label: "Slabs",
     route: "/slabs",
     icon: Award,
+    tagline: "Graded & certified",
     description:
       "Graded, certified, and one-of-a-kind. Gold-ringed listings are top-graded gems; holo-ringed ones are the low-population grails.",
     emptyMessage: "No slabs listed yet. Check back soon!",
@@ -39,6 +46,7 @@ export const CATEGORY_META: Record<ItemType, CategoryMeta> = {
     label: "Sealed",
     route: "/sealed",
     icon: PackageOpen,
+    tagline: "Boxes, ETBs & tins",
     description: "Booster boxes, ETBs, tins, and packs — still factory sealed.",
     emptyMessage: "No sealed product listed yet. Check back soon!",
     noMatchMessage: "No sealed product matches your search or filters.",
@@ -47,6 +55,7 @@ export const CATEGORY_META: Record<ItemType, CategoryMeta> = {
     label: "Accessories",
     route: "/accessories",
     icon: ShieldCheck,
+    tagline: "Sleeves, binders & more",
     description: "Sleeves, toploaders, binders, and other collector gear.",
     emptyMessage: "No accessories listed yet. Check back soon!",
     noMatchMessage: "No accessories match your search or filters.",

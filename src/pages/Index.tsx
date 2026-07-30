@@ -198,7 +198,7 @@ const Index = () => {
                 </div>
                 <div>
                   <p className="font-display font-bold text-lg">{meta.label}</p>
-                  <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{meta.description}</p>
+                  <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{meta.tagline}</p>
                 </div>
                 <div className="mt-auto flex items-center gap-2 pt-2">
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-success/15 border border-success/30 text-xs font-semibold text-success">
