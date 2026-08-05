@@ -486,7 +486,7 @@ export function EditCardDialog({ card, open, onOpenChange, onSave }: EditCardDia
             <div className="col-span-3 space-y-2">
               {videoPreview && (
                 <div className="relative w-24 h-24 rounded-md overflow-hidden border border-border bg-black flex items-center justify-center">
-                  <video src={videoPreview} controls className="w-full h-full object-contain" />
+                  <video src={videoPreview} controls muted className="w-full h-full object-contain" />
                   <Button
                     size="icon"
                     variant="destructive"

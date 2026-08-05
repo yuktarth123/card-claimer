@@ -76,6 +76,7 @@ export function AuctionCard({ item, sessionId, buyerName, buyerPhone }: Props) {
             poster={item.photo_url ?? undefined}
             className="w-full h-full object-cover"
             controls
+            muted
             playsInline
             preload="none"
           />

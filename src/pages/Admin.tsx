@@ -809,7 +809,7 @@ const Admin = () => {
               <Label>Video (Optional)</Label>
               {videoPreview ? (
                 <div className="relative aspect-[3/4] max-w-[200px] rounded-xl overflow-hidden border border-border bg-black flex items-center justify-center">
-                  <video src={videoPreview} controls className="w-full h-full object-contain" />
+                  <video src={videoPreview} controls muted className="w-full h-full object-contain" />
                   <Button
                     size="icon"
                     variant="destructive"

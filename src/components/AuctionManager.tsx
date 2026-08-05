@@ -409,7 +409,7 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
             <Label>Video (optional)</Label>
             {videoPreview ? (
               <div className="relative aspect-[4/3] max-w-[220px] rounded-xl overflow-hidden border border-border bg-black flex items-center justify-center">
-                <video src={videoPreview} controls className="w-full h-full object-contain" />
+                <video src={videoPreview} controls muted className="w-full h-full object-contain" />
                 <Button size="icon" variant="destructive" className="absolute top-2 right-2 h-7 w-7" onClick={() => onPickVideo(null)}>
                   <X className="w-4 h-4" />
                 </Button>
