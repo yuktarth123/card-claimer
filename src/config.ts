@@ -68,3 +68,10 @@ export const DEFAULT_STARTING_PRICE = 100;
 export const DEFAULT_BID_INCREMENT = 100;
 export const BID_DISCLAIMER =
   "Please bid responsibly — by placing a bid, you're committing to pay the full amount if you win. To keep things fair for everyone, we may not be able to let winners who don't complete payment bid again in the future. Thanks for understanding!";
+
+// Web Push public key -- safe to expose in client code, it only identifies
+// this app to the push service. Its private counterpart lives only as the
+// notify-auction-winner Edge Function's VAPID_PRIVATE_KEY secret. Generated
+// with `npx web-push generate-vapid-keys` -- if you ever rotate it, both
+// halves must be updated together.
+export const VAPID_PUBLIC_KEY = "BKRro_CmmMstwdRJwngEKO1PLPghx2PcSBhfSUs6UFy4UQcfWozLsOg6fOBgMuNpJl8urcW5huczYHk42Ng7XAQ";

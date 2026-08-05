@@ -4,6 +4,7 @@ import { Database } from "@/integrations/supabase/types";
 import { useBuyer } from "@/hooks/useBuyer";
 import { NameGate } from "@/components/NameGate";
 import { AuctionCard } from "@/components/AuctionCard";
+import { PushOptIn } from "@/components/PushOptIn";
 import { effectiveAuctionStatus } from "@/lib/auction";
 import { SELLER_NAME, BID_DISCLAIMER } from "@/config";
 import { Link } from "react-router-dom";
@@ -134,10 +135,13 @@ const Bidding = () => {
             Bid ₹100 at a time, or set your own amount. Highest bid when the clock hits zero wins.
           </p>
           {name && (
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted border border-border mt-4 w-fit">
-              <Zap className="w-3.5 h-3.5 text-primary" />
-              <span className="text-sm">Bidder: <strong>{name}</strong></span>
-              <button onClick={() => setEditingProfile(true)} className="text-xs text-muted-foreground hover:text-foreground underline ml-1">change</button>
+            <div className="flex flex-wrap items-center gap-2 mt-4">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted border border-border w-fit">
+                <Zap className="w-3.5 h-3.5 text-primary" />
+                <span className="text-sm">Bidder: <strong>{name}</strong></span>
+                <button onClick={() => setEditingProfile(true)} className="text-xs text-muted-foreground hover:text-foreground underline ml-1">change</button>
+              </div>
+              <PushOptIn sessionId={sessionId} />
             </div>
           )}
         </div>

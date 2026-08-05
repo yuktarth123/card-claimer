@@ -9,12 +9,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import {
-  Camera, Loader2, X, Video, Upload, Gavel, Trash2, StopCircle, Ban, ShieldOff, Trophy, Clock, Pencil, Save,
+  Camera, Loader2, X, Video, Upload, Gavel, Trash2, StopCircle, Ban, ShieldOff, Trophy, Clock, Pencil, Save, MessageCircle,
 } from "lucide-react";
 import { CURRENCY, DEFAULT_STARTING_PRICE, DEFAULT_BID_INCREMENT } from "@/config";
 import { AdditionalPhotosField } from "@/components/AdditionalPhotosField";
 import { prepareVideoForUpload, isPayloadTooLargeError } from "@/lib/videoUpload";
-import { parseStorageUrl } from "@/lib/utils";
+import { parseStorageUrl, buildWhatsAppLink } from "@/lib/utils";
 import { effectiveAuctionStatus, formatCountdown } from "@/lib/auction";
 
 type DbCard = Database["public"]["Tables"]["cards"]["Row"];
@@ -361,8 +361,11 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
     else toast.success("Unblocked");
   };
 
-  const blockWinner = async (item: AuctionItem) => {
-    if (!item.winner_session_id) return;
+  // Winner phone numbers deliberately never live on auction_items (public
+  // SELECT) -- only in auction_bids, which is authenticated-only. Both
+  // block-winner and message-winner need it, so they share this lookup.
+  const getWinnerPhone = async (item: AuctionItem): Promise<string | null> => {
+    if (!item.winner_session_id) return null;
     const { data, error } = await supabase
       .from("auction_bids")
       .select("buyer_phone")
@@ -371,17 +374,33 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (error || !data?.buyer_phone) {
+    if (error || !data?.buyer_phone) return null;
+    return data.buyer_phone;
+  };
+
+  const blockWinner = async (item: AuctionItem) => {
+    const phone = await getWinnerPhone(item);
+    if (!phone) {
       toast.error("Couldn't find a phone number for this winner");
       return;
     }
-    if (!confirm(`Block ${item.winner_name} (${data.buyer_phone}) from bidding again for not paying "${item.title}"?`)) return;
+    if (!confirm(`Block ${item.winner_name} (${phone}) from bidding again for not paying "${item.title}"?`)) return;
     const { error: blockError } = await supabase.from("blocked_bidders").upsert(
-      { phone: data.buyer_phone, reason: `Didn't pay for "${item.title}"`, blocked_at: new Date().toISOString() },
+      { phone, reason: `Didn't pay for "${item.title}"`, blocked_at: new Date().toISOString() },
       { onConflict: "phone" }
     );
     if (blockError) toast.error("Failed to block");
     else toast.success(`${item.winner_name} blocked from future bidding`);
+  };
+
+  const messageWinnerOnWhatsApp = async (item: AuctionItem) => {
+    const phone = await getWinnerPhone(item);
+    if (!phone) {
+      toast.error("Couldn't find a phone number for this winner");
+      return;
+    }
+    const message = `Hi ${item.winner_name}! You won the auction for "${item.title}" at ${CURRENCY}${Number(item.winner_amount).toFixed(0)}. Please complete payment to claim it -- reply here to arrange it.`;
+    window.open(buildWhatsAppLink(phone, message), "_blank");
   };
 
   const statusLabel = (item: AuctionItem) => {
@@ -588,6 +607,11 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
                           {(status === "scheduled" || status === "live") && (
                             <Button size="icon" variant="ghost" className="h-7 w-7" title="Cancel" onClick={() => cancelAuction(item)}>
                               <Ban className="w-4 h-4 text-destructive" />
+                            </Button>
+                          )}
+                          {status === "ended" && item.winner_name && (
+                            <Button size="icon" variant="ghost" className="h-7 w-7" title="Message winner on WhatsApp" onClick={() => messageWinnerOnWhatsApp(item)}>
+                              <MessageCircle className="w-4 h-4 text-success" />
                             </Button>
                           )}
                           {status === "ended" && item.winner_name && (

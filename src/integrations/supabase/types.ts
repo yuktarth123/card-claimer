@@ -359,6 +359,33 @@ export type Database = {
         }
         Relationships: []
       }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          buyer_session_id: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+        }
+        Insert: {
+          auth: string
+          buyer_session_id: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+        }
+        Update: {
+          auth?: string
+          buyer_session_id?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+        }
+        Relationships: []
+      }
       claims: {
         Row: {
           buyer_name: string
@@ -844,6 +871,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      save_push_subscription: {
+        Args: { _auth: string; _endpoint: string; _p256dh: string; _session_id: string }
+        Returns: undefined
       }
       release_claim: { Args: { _claim_id: string; _session_id: string }; Returns: undefined }
       release_expired_claims: { Args: never; Returns: undefined }
