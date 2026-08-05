@@ -14,6 +14,7 @@ import Accessories from "./pages/Accessories.tsx";
 import BoxBreaks from "./pages/BoxBreaks.tsx";
 import LiveBreak from "./pages/LiveBreak.tsx";
 import LiveBreakChat from "./pages/LiveBreakChat.tsx";
+import Bidding from "./pages/Bidding.tsx";
 import { AnalyticsTracker } from "./components/AnalyticsTracker.tsx";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
           <Route path="/breaks" element={<BoxBreaks />} />
           <Route path="/breaks/:breakId" element={<LiveBreak />} />
           <Route path="/breaks/:breakId/chat" element={<LiveBreakChat />} />
+          <Route path="/bidding" element={<Bidding />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

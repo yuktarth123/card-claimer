@@ -223,6 +223,142 @@ export type Database = {
         }
         Relationships: []
       }
+      auction_items: {
+        Row: {
+          bid_count: number
+          bid_increment: number
+          created_at: string
+          current_bid: number | null
+          current_bid_name: string | null
+          current_bid_session_id: string | null
+          description: string | null
+          end_time: string
+          id: string
+          photo_url: string | null
+          photo_urls: string[]
+          source_card_id: string | null
+          start_time: string
+          starting_price: number
+          status: string
+          title: string
+          video_url: string | null
+          winner_amount: number | null
+          winner_name: string | null
+          winner_session_id: string | null
+        }
+        Insert: {
+          bid_count?: number
+          bid_increment?: number
+          created_at?: string
+          current_bid?: number | null
+          current_bid_name?: string | null
+          current_bid_session_id?: string | null
+          description?: string | null
+          end_time: string
+          id?: string
+          photo_url?: string | null
+          photo_urls?: string[]
+          source_card_id?: string | null
+          start_time: string
+          starting_price?: number
+          status?: string
+          title: string
+          video_url?: string | null
+          winner_amount?: number | null
+          winner_name?: string | null
+          winner_session_id?: string | null
+        }
+        Update: {
+          bid_count?: number
+          bid_increment?: number
+          created_at?: string
+          current_bid?: number | null
+          current_bid_name?: string | null
+          current_bid_session_id?: string | null
+          description?: string | null
+          end_time?: string
+          id?: string
+          photo_url?: string | null
+          photo_urls?: string[]
+          source_card_id?: string | null
+          start_time?: string
+          starting_price?: number
+          status?: string
+          title?: string
+          video_url?: string | null
+          winner_amount?: number | null
+          winner_name?: string | null
+          winner_session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auction_items_source_card_id_fkey"
+            columns: ["source_card_id"]
+            isOneToOne: false
+            referencedRelation: "cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      auction_bids: {
+        Row: {
+          amount: number
+          auction_item_id: string
+          buyer_name: string
+          buyer_phone: string | null
+          buyer_session_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          amount: number
+          auction_item_id: string
+          buyer_name: string
+          buyer_phone?: string | null
+          buyer_session_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          amount?: number
+          auction_item_id?: string
+          buyer_name?: string
+          buyer_phone?: string | null
+          buyer_session_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auction_bids_auction_item_id_fkey"
+            columns: ["auction_item_id"]
+            isOneToOne: false
+            referencedRelation: "auction_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      blocked_bidders: {
+        Row: {
+          blocked_at: string
+          id: string
+          phone: string
+          reason: string | null
+        }
+        Insert: {
+          blocked_at?: string
+          id?: string
+          phone: string
+          reason?: string | null
+        }
+        Update: {
+          blocked_at?: string
+          id?: string
+          phone?: string
+          reason?: string | null
+        }
+        Relationships: []
+      }
       claims: {
         Row: {
           buyer_name: string
@@ -711,6 +847,62 @@ export type Database = {
       }
       release_claim: { Args: { _claim_id: string; _session_id: string }; Returns: undefined }
       release_expired_claims: { Args: never; Returns: undefined }
+      sync_auction_statuses: { Args: never; Returns: undefined }
+      place_bid: {
+        Args: {
+          _amount: number
+          _auction_item_id: string
+          _buyer_name: string
+          _buyer_phone?: string
+          _session_id: string
+        }
+        Returns: {
+          bid_count: number
+          bid_increment: number
+          created_at: string
+          current_bid: number | null
+          current_bid_name: string | null
+          current_bid_session_id: string | null
+          description: string | null
+          end_time: string
+          id: string
+          photo_url: string | null
+          photo_urls: string[]
+          source_card_id: string | null
+          start_time: string
+          starting_price: number
+          status: string
+          title: string
+          video_url: string | null
+          winner_amount: number | null
+          winner_name: string | null
+          winner_session_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "auction_items"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      get_my_bids: {
+        Args: { _session_id: string }
+        Returns: {
+          amount: number
+          auction_item_id: string
+          buyer_name: string
+          buyer_phone: string | null
+          buyer_session_id: string
+          created_at: string
+          id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "auction_bids"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       start_sale: {
         Args: { _name: string }
         Returns: {

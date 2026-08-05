@@ -9,9 +9,10 @@ interface Props {
   open: boolean;
   initialName?: string;
   onSubmit: (name: string, phone: string) => void;
+  description?: string;
 }
 
-export function NameGate({ open, initialName, onSubmit }: Props) {
+export function NameGate({ open, initialName, onSubmit, description }: Props) {
   const [name, setName] = useState(initialName ?? "");
   const [phone, setPhone] = useState("");
 
@@ -37,9 +38,9 @@ export function NameGate({ open, initialName, onSubmit }: Props) {
           </div>
           <DialogTitle className="text-center text-2xl">{isPhoneOnly ? "One more thing!" : "Welcome!"}</DialogTitle>
           <DialogDescription className="text-center">
-            {isPhoneOnly
+            {description ?? (isPhoneOnly
               ? "We don't have a phone number on file for you yet — add it so we can reach you about your claims and track your leaderboard XP."
-              : "Enter your name and phone to start claiming cards. Your phone helps us track your XP for the monthly leaderboard."}
+              : "Enter your name and phone to start claiming cards. Your phone helps us track your XP for the monthly leaderboard.")}
           </DialogDescription>
         </DialogHeader>
         <form

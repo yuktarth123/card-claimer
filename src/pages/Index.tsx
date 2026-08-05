@@ -5,7 +5,7 @@ import { Database } from "@/integrations/supabase/types";
 import { NameGate } from "@/components/NameGate";
 import { useBuyer } from "@/hooks/useBuyer";
 import { toast } from "sonner";
-import { Zap, Trophy, PackageOpen } from "lucide-react";
+import { Zap, Trophy, PackageOpen, Gavel } from "lucide-react";
 import CountdownTimer from "@/components/CountdownTimer";
 import { CURRENCY, SELLER_NAME } from "@/config";
 import AppLogo from "@/components/AppLogo";
@@ -137,6 +137,12 @@ const Index = () => {
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/15 border border-primary/30 text-sm font-semibold text-primary hover:bg-primary/25 transition"
               >
                 <PackageOpen className="w-4 h-4" /> <span className="hidden sm:inline">Box Breaks</span>
+              </Link>
+              <Link
+                to="/bidding"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent/15 border border-accent/30 text-sm font-semibold text-accent hover:bg-accent/25 transition"
+              >
+                <Gavel className="w-4 h-4" /> <span className="hidden sm:inline">Bidding</span>
               </Link>
               <Link
                 to="/leaderboard"

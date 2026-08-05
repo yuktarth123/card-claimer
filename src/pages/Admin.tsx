@@ -22,6 +22,7 @@ import { SiteWideSaleManager } from "@/components/SiteWideSaleManager";
 import { SalesHistory } from "@/components/SalesHistory";
 import { AnalyticsDashboard } from "@/components/AnalyticsDashboard";
 import { BoxBreakManager } from "@/components/BoxBreakManager";
+import { AuctionManager } from "@/components/AuctionManager";
 import { CardScanner, ScannedCard } from "@/components/CardScanner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
@@ -616,6 +617,7 @@ const Admin = () => {
           <TabsList className="mb-6 max-w-full overflow-x-auto justify-start">
             <TabsTrigger value="listings" className="shrink-0">Listings</TabsTrigger>
             <TabsTrigger value="breaks" className="shrink-0">Box Breaks</TabsTrigger>
+            <TabsTrigger value="auctions" className="shrink-0">Auctions</TabsTrigger>
             <TabsTrigger value="sales" className="shrink-0">Sales History</TabsTrigger>
             <TabsTrigger value="stats" className="shrink-0">Statistics</TabsTrigger>
             <TabsTrigger value="setup" className="shrink-0">Sale Setup</TabsTrigger>
@@ -623,6 +625,10 @@ const Admin = () => {
 
           <TabsContent value="breaks">
             <BoxBreakManager />
+          </TabsContent>
+
+          <TabsContent value="auctions">
+            <AuctionManager cards={cards} />
           </TabsContent>
 
           <TabsContent value="setup" className="grid lg:grid-cols-2 gap-6 [&>*]:min-w-0">

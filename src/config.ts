@@ -59,3 +59,12 @@ export const VISUAL_TIERS = [
 ] as const;
 
 // SALE_START_TIME is now managed via the Admin UI and stored in Supabase.
+
+// Bidding / auctions. ₹100 is a hard floor enforced in the DB (place_bid,
+// chk_starting_price_floor, chk_bid_increment_floor) -- these are just the
+// admin form's pre-filled defaults.
+export const MIN_BID_AMOUNT = 100;
+export const DEFAULT_STARTING_PRICE = 100;
+export const DEFAULT_BID_INCREMENT = 100;
+export const BID_DISCLAIMER =
+  "By placing a bid you agree to pay the full bid amount if you win. Winners who don't complete payment will be permanently blocked from bidding again.";
