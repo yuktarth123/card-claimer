@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import {
-  Camera, Loader2, X, Video, Upload, Gavel, Trash2, StopCircle, Ban, ShieldOff, Trophy, Clock,
+  Camera, Loader2, X, Video, Upload, Gavel, Trash2, StopCircle, Ban, ShieldOff, Trophy, Clock, Pencil, Save,
 } from "lucide-react";
 import { CURRENCY, DEFAULT_STARTING_PRICE, DEFAULT_BID_INCREMENT } from "@/config";
 import { AdditionalPhotosField } from "@/components/AdditionalPhotosField";
@@ -21,11 +21,19 @@ type DbCard = Database["public"]["Tables"]["cards"]["Row"];
 type AuctionItem = Database["public"]["Tables"]["auction_items"]["Row"];
 type BlockedBidder = Database["public"]["Tables"]["blocked_bidders"]["Row"];
 
+function toDatetimeLocal(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export function AuctionManager({ cards }: { cards: DbCard[] }) {
   const [items, setItems] = useState<AuctionItem[]>([]);
   const [blocked, setBlocked] = useState<BlockedBidder[]>([]);
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(Date.now());
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const formRef = useRef<HTMLDivElement>(null);
 
   const [mode, setMode] = useState<"new" | "existing">("new");
   const [selectedCardId, setSelectedCardId] = useState("");
@@ -90,6 +98,7 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
   }, []);
 
   const resetForm = () => {
+    setEditingId(null);
     setMode("new");
     setSelectedCardId("");
     setTitle("");
@@ -123,6 +132,28 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
     setVideoFile(null);
     setVideoPreview(card.video_url);
     setExistingVideoUrl(card.video_url);
+  };
+
+  const startEdit = (item: AuctionItem) => {
+    setEditingId(item.id);
+    setMode("new");
+    setSelectedCardId("");
+    setTitle(item.title);
+    setDescription(item.description ?? "");
+    setStartingPrice(String(item.starting_price));
+    setBidIncrement(String(item.bid_increment));
+    setStartAt(toDatetimeLocal(item.start_time));
+    setEndAt(toDatetimeLocal(item.end_time));
+    setPhotoFile(null);
+    setPhotoPreview(item.photo_url);
+    setExistingPhotoUrl(item.photo_url);
+    setExtraPhotoUrls(item.photo_urls ?? []);
+    setVideoFile(null);
+    setVideoPreview(item.video_url);
+    setExistingVideoUrl(item.video_url);
+    if (photoFileRef.current) photoFileRef.current.value = "";
+    if (videoFileRef.current) videoFileRef.current.value = "";
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const onPickPhoto = (file: File | null) => {
@@ -207,6 +238,32 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
         return;
       }
       video_url = supabase.storage.from("card-videos").getPublicUrl(path).data.publicUrl;
+    }
+
+    if (editingId) {
+      const { error } = await supabase
+        .from("auction_items")
+        .update({
+          title: title.trim(),
+          description: description.trim() || null,
+          photo_url,
+          photo_urls: extraPhotoUrls,
+          video_url,
+          starting_price: parsedStarting,
+          bid_increment: parsedIncrement,
+          start_time: startIso,
+          end_time: endIso,
+        })
+        .eq("id", editingId);
+      setPublishing(false);
+      if (error) {
+        console.error(error);
+        toast.error("Couldn't save changes");
+      } else {
+        toast.success(`Auction updated: ${title}`);
+        resetForm();
+      }
+      return;
     }
 
     const { error } = await supabase.from("auction_items").insert({
@@ -337,21 +394,26 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
 
   return (
     <div className="grid lg:grid-cols-2 gap-6 [&>*]:min-w-0">
-      <Card className="gradient-card-bg border-border">
+      <Card className="gradient-card-bg border-border" ref={formRef}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Gavel className="w-5 h-5 text-primary" /> Create an Auction</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            {editingId ? <Pencil className="w-5 h-5 text-primary" /> : <Gavel className="w-5 h-5 text-primary" />}
+            {editingId ? "Edit Auction" : "Create an Auction"}
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex gap-2">
-            <Button type="button" size="sm" variant={mode === "new" ? "default" : "outline"} onClick={() => setMode("new")} className="flex-1">
-              New Item
-            </Button>
-            <Button type="button" size="sm" variant={mode === "existing" ? "default" : "outline"} onClick={() => setMode("existing")} className="flex-1">
-              Existing Card
-            </Button>
-          </div>
+          {!editingId && (
+            <div className="flex gap-2">
+              <Button type="button" size="sm" variant={mode === "new" ? "default" : "outline"} onClick={() => setMode("new")} className="flex-1">
+                New Item
+              </Button>
+              <Button type="button" size="sm" variant={mode === "existing" ? "default" : "outline"} onClick={() => setMode("existing")} className="flex-1">
+                Existing Card
+              </Button>
+            </div>
+          )}
 
-          {mode === "existing" && (
+          {mode === "existing" && !editingId && (
             <div className="space-y-2">
               <Label>Pick a listing</Label>
               <Select value={selectedCardId} onValueChange={onSelectCard}>
@@ -452,10 +514,23 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
             </div>
           </div>
 
-          <Button onClick={publish} disabled={publishing || isProcessingVideo} className="w-full h-12 gradient-gold text-primary-foreground font-bold text-base">
-            {publishing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Upload className="w-4 h-4 mr-2" />}
-            Create Auction
-          </Button>
+          <div className="flex gap-2">
+            {editingId && (
+              <Button type="button" variant="outline" onClick={resetForm} className="h-12">
+                Cancel
+              </Button>
+            )}
+            <Button onClick={publish} disabled={publishing || isProcessingVideo} className="flex-1 h-12 gradient-gold text-primary-foreground font-bold text-base">
+              {publishing ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : editingId ? (
+                <Save className="w-4 h-4 mr-2" />
+              ) : (
+                <Upload className="w-4 h-4 mr-2" />
+              )}
+              {editingId ? "Save Changes" : "Create Auction"}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -502,6 +577,9 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
                           )}
                         </div>
                         <div className="flex gap-1 flex-shrink-0">
+                          <Button size="icon" variant="ghost" className="h-7 w-7" title="Edit" onClick={() => startEdit(item)}>
+                            <Pencil className="w-4 h-4 text-muted-foreground" />
+                          </Button>
                           {(status === "scheduled" || status === "live") && (
                             <Button size="icon" variant="ghost" className="h-7 w-7" title="End now" onClick={() => endNow(item)}>
                               <StopCircle className="w-4 h-4 text-primary" />
