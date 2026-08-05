@@ -24,6 +24,8 @@ const Index = () => {
   const [rows, setRows] = useState<CountRow[]>([]);
   const [isSaleLive, setIsSaleLive] = useState(false);
   const [saleStartTime, setSaleStartTime] = useState<string | null>(null);
+  const [liveBreaksCount, setLiveBreaksCount] = useState(0);
+  const [liveAuctionsCount, setLiveAuctionsCount] = useState(0);
 
   const fetchCounts = async () => {
     const { data, error } = await supabase.from("cards").select("item_type, quantity_available, price");
@@ -31,11 +33,20 @@ const Index = () => {
     if (error) console.error("Error fetching listing counts:", error);
   };
 
+  const fetchExtraCounts = async () => {
+    const [breaksResult, auctionsResult] = await Promise.all([
+      supabase.from("box_breaks").select("id", { count: "exact", head: true }).eq("status", "live"),
+      supabase.from("auction_items").select("id", { count: "exact", head: true }).eq("status", "live"),
+    ]);
+    setLiveBreaksCount(breaksResult.count ?? 0);
+    setLiveAuctionsCount(auctionsResult.count ?? 0);
+  };
+
   useEffect(() => {
     let mounted = true;
 
     const fetchInitialData = async () => {
-      await fetchCounts();
+      await Promise.all([fetchCounts(), fetchExtraCounts()]);
 
       const { data: settingsData, error: settingsError } = await supabase
         .from("app_settings")
@@ -81,10 +92,26 @@ const Index = () => {
       )
       .subscribe();
 
+    const breaksChannel = supabase
+      .channel("hub-breaks-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "box_breaks" }, () => {
+        fetchExtraCounts();
+      })
+      .subscribe();
+
+    const auctionsChannel = supabase
+      .channel("hub-auctions-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "auction_items" }, () => {
+        fetchExtraCounts();
+      })
+      .subscribe();
+
     return () => {
       mounted = false;
       supabase.removeChannel(cardsChannel);
       supabase.removeChannel(settingsChannel);
+      supabase.removeChannel(breaksChannel);
+      supabase.removeChannel(auctionsChannel);
     };
   }, []);
 
@@ -233,6 +260,44 @@ const Index = () => {
               </Link>
             );
           })}
+
+          <Link
+            to="/breaks"
+            className="group flex flex-col gap-3 rounded-2xl border border-border bg-card p-5 hover:border-primary/50 hover:shadow-glow transition"
+          >
+            <div className="w-12 h-12 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center group-hover:bg-primary/25 transition">
+              <PackageOpen className="w-6 h-6 text-primary" />
+            </div>
+            <div>
+              <p className="font-display font-bold text-lg">Box Breaks</p>
+              <p className="text-sm text-muted-foreground mt-1">Live-streamed pack breaks — claim a numbered slot and watch it opened live.</p>
+            </div>
+            <div className="mt-auto flex items-center gap-2 pt-2">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-success/15 border border-success/30 text-xs font-semibold text-success">
+                <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+                {liveBreaksCount} live now
+              </span>
+            </div>
+          </Link>
+
+          <Link
+            to="/bidding"
+            className="group flex flex-col gap-3 rounded-2xl border border-border bg-card p-5 hover:border-accent/50 hover:shadow-glow transition"
+          >
+            <div className="w-12 h-12 rounded-xl bg-accent/15 border border-accent/30 flex items-center justify-center group-hover:bg-accent/25 transition">
+              <Gavel className="w-6 h-6 text-accent" />
+            </div>
+            <div>
+              <p className="font-display font-bold text-lg">Bidding</p>
+              <p className="text-sm text-muted-foreground mt-1">Bid on featured cards — highest bid when the timer ends wins.</p>
+            </div>
+            <div className="mt-auto flex items-center gap-2 pt-2">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-success/15 border border-success/30 text-xs font-semibold text-success">
+                <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+                {liveAuctionsCount} live now
+              </span>
+            </div>
+          </Link>
         </div>
       </main>
     </div>
