@@ -67,4 +67,4 @@ export const MIN_BID_AMOUNT = 100;
 export const DEFAULT_STARTING_PRICE = 100;
 export const DEFAULT_BID_INCREMENT = 100;
 export const BID_DISCLAIMER =
-  "By placing a bid you agree to pay the full bid amount if you win. Winners who don't complete payment will be permanently blocked from bidding again.";
+  "Please bid responsibly — by placing a bid, you're committing to pay the full amount if you win. To keep things fair for everyone, we may not be able to let winners who don't complete payment bid again in the future. Thanks for understanding!";
