@@ -19,7 +19,8 @@ import { CATEGORY_META, CATEGORY_ORDER } from "@/lib/categoryMeta";
 type CountRow = Pick<Database["public"]["Tables"]["cards"]["Row"], "item_type" | "quantity_available" | "price">;
 
 const Index = () => {
-  const { name, phone, setName, setIdentity } = useBuyer();
+  const { name, phone, setIdentity } = useBuyer();
+  const [editingProfile, setEditingProfile] = useState(false);
   const [rows, setRows] = useState<CountRow[]>([]);
   const [isSaleLive, setIsSaleLive] = useState(false);
   const [saleStartTime, setSaleStartTime] = useState<string | null>(null);
@@ -116,6 +117,19 @@ const Index = () => {
           });
         }}
       />
+      <NameGate
+        open={editingProfile}
+        initialName={name}
+        initialPhone={phone}
+        title="Update your profile"
+        description="Change the name and phone you're claiming under."
+        onCancel={() => setEditingProfile(false)}
+        onSubmit={(n, p) => {
+          setIdentity(n, p);
+          setEditingProfile(false);
+          toast.success(`Updated to ${n}`);
+        }}
+      />
       <PwaInstallBanner />
 
       {/* Hero */}
@@ -182,7 +196,7 @@ const Index = () => {
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted border border-border">
                 <Zap className="w-3.5 h-3.5 text-primary" />
                 <span className="text-sm">Trainer: <strong>{name}</strong></span>
-                <button onClick={() => setName("")} className="text-xs text-muted-foreground hover:text-foreground underline ml-1">change</button>
+                <button onClick={() => setEditingProfile(true)} className="text-xs text-muted-foreground hover:text-foreground underline ml-1">change</button>
               </div>
             )}
           </div>

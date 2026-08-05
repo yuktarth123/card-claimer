@@ -14,7 +14,8 @@ import { toast } from "sonner";
 type AuctionItem = Database["public"]["Tables"]["auction_items"]["Row"];
 
 const Bidding = () => {
-  const { name, phone, sessionId, setName, setIdentity } = useBuyer();
+  const { name, phone, sessionId, setIdentity } = useBuyer();
+  const [editingProfile, setEditingProfile] = useState(false);
   const [items, setItems] = useState<AuctionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(Date.now());
@@ -100,6 +101,19 @@ const Bidding = () => {
           toast.success(`Welcome, ${n}! 👋`, { description: "Good luck bidding!" });
         }}
       />
+      <NameGate
+        open={editingProfile}
+        initialName={name}
+        initialPhone={phone}
+        title="Update your profile"
+        description="Change the name and phone you're bidding under."
+        onCancel={() => setEditingProfile(false)}
+        onSubmit={(n, p) => {
+          setIdentity(n, p);
+          setEditingProfile(false);
+          toast.success(`Updated to ${n}`);
+        }}
+      />
 
       <header className="relative overflow-hidden border-b border-border">
         <div className="absolute inset-0 gradient-hero opacity-30" />
@@ -123,7 +137,7 @@ const Bidding = () => {
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted border border-border mt-4 w-fit">
               <Zap className="w-3.5 h-3.5 text-primary" />
               <span className="text-sm">Bidder: <strong>{name}</strong></span>
-              <button onClick={() => setName("")} className="text-xs text-muted-foreground hover:text-foreground underline ml-1">change</button>
+              <button onClick={() => setEditingProfile(true)} className="text-xs text-muted-foreground hover:text-foreground underline ml-1">change</button>
             </div>
           )}
         </div>

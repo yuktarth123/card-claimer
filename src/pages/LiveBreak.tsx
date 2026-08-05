@@ -25,7 +25,8 @@ const statusLabel: Record<string, string> = {
 
 const LiveBreak = () => {
   const { breakId } = useParams<{ breakId: string }>();
-  const { name, phone, sessionId, setName, setIdentity } = useBuyer();
+  const { name, phone, sessionId, setIdentity } = useBuyer();
+  const [editingProfile, setEditingProfile] = useState(false);
   const [breakRow, setBreakRow] = useState<BoxBreak | null>(null);
   const [claims, setClaims] = useState<BreakSlotClaim[]>([]);
   const [loading, setLoading] = useState(true);
@@ -185,6 +186,19 @@ const LiveBreak = () => {
           toast.success(`Welcome, ${n}! 👋`, { description: "Pick your slots below." });
         }}
       />
+      <NameGate
+        open={editingProfile}
+        initialName={name}
+        initialPhone={phone}
+        title="Update your profile"
+        description="Change the name and phone you're claiming under."
+        onCancel={() => setEditingProfile(false)}
+        onSubmit={(n, p) => {
+          setIdentity(n, p);
+          setEditingProfile(false);
+          toast.success(`Updated to ${n}`);
+        }}
+      />
 
       <header className="border-b border-border">
         <div className="container py-4 flex items-center justify-between gap-3">
@@ -194,7 +208,7 @@ const LiveBreak = () => {
           {name && (
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted border border-border text-sm">
               Trainer: <strong>{name}</strong>
-              <button onClick={() => setName("")} className="text-xs text-muted-foreground hover:text-foreground underline ml-1">
+              <button onClick={() => setEditingProfile(true)} className="text-xs text-muted-foreground hover:text-foreground underline ml-1">
                 change
               </button>
             </div>
