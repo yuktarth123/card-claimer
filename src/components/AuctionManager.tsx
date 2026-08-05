@@ -480,7 +480,7 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
                         {(item.photo_url || item.video_url) && (
                           <div className="w-12 h-12 flex-shrink-0 rounded overflow-hidden bg-muted">
                             {item.video_url ? (
-                              <video src={item.video_url} className="w-full h-full object-cover" muted playsInline />
+                              <video src={item.video_url} className="w-full h-full object-cover" muted playsInline preload="none" />
                             ) : (
                               <img src={item.photo_url!} alt={item.title} className="w-full h-full object-cover" />
                             )}

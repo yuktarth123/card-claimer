@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Database } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -23,28 +23,11 @@ export function AuctionCard({ item, sessionId, buyerName, buyerPhone }: Props) {
   const [now, setNow] = useState(Date.now());
   const [customAmount, setCustomAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(interval);
   }, []);
-
-  // Only autoplay this thumbnail's video while it's actually on screen, so a
-  // grid of many auctions doesn't try to stream every video at once.
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) video.play().catch(() => {});
-        else video.pause();
-      },
-      { threshold: 0.5 }
-    );
-    observer.observe(video);
-    return () => observer.disconnect();
-  }, [item.video_url]);
 
   const status = effectiveAuctionStatus(item, now);
   const minBid = nextMinBid(item);
@@ -84,7 +67,18 @@ export function AuctionCard({ item, sessionId, buyerName, buyerPhone }: Props) {
     <Card className="gradient-card-bg border-border overflow-hidden flex flex-col">
       <div className="relative aspect-[4/3] bg-muted flex items-center justify-center">
         {item.video_url ? (
-          <video ref={videoRef} src={item.video_url} className="w-full h-full object-cover" muted playsInline loop preload="metadata" />
+          // preload="none" + controls -- video only starts fetching once the
+          // buyer taps play, instead of every card in the grid streaming its
+          // clip automatically. That autoplay was eating into Supabase's
+          // monthly egress quota for no reason on cards nobody was watching.
+          <video
+            src={item.video_url}
+            poster={item.photo_url ?? undefined}
+            className="w-full h-full object-cover"
+            controls
+            playsInline
+            preload="none"
+          />
         ) : item.photo_url ? (
           <img src={item.photo_url} alt={item.title} className="w-full h-full object-cover" />
         ) : (
