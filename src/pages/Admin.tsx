@@ -768,7 +768,6 @@ const Admin = () => {
                       ref={photoFileRef}
                       type="file"
                       accept="image/*"
-                      capture="environment"
                       className="hidden"
                       onChange={(e) => onPickPhoto(e.target.files?.[0] || null)}
                     />
@@ -838,7 +837,6 @@ const Admin = () => {
                     ref={videoFileRef}
                     type="file"
                     accept="video/*"
-                    capture="environment"
                     className="hidden"
                     onChange={(e) => onPickVideo(e.target.files?.[0] || null)}
                   />

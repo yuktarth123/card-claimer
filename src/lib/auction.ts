@@ -11,7 +11,7 @@ export type EffectiveAuctionStatus = "scheduled" | "live" | "ended" | "cancelled
  * stored column stays authoritative for winner_name/winner_amount, which
  * only the DB can set. */
 export function effectiveAuctionStatus(
-  item: Pick<AuctionItem, "status" | "start_time" | "end_time">,
+  item: Pick<AuctionItem, "status" | "start_time" | "end_time" | "bid_count">,
   now: number = Date.now()
 ): EffectiveAuctionStatus {
   if (item.status === "cancelled") return "cancelled";
@@ -19,7 +19,11 @@ export function effectiveAuctionStatus(
   const start = new Date(item.start_time).getTime();
   const end = new Date(item.end_time).getTime();
   if (now < start) return "scheduled";
-  if (now >= end) return "ended";
+  // Zero-bid auctions get auto-extended by 24h server-side instead of
+  // ending (see sync_auction_statuses) -- treat it as still live right up
+  // until that actually happens, instead of flashing "ended / unsold" for
+  // the few seconds until the next poll catches up.
+  if (now >= end) return item.bid_count > 0 ? "ended" : "live";
   return "live";
 }
 

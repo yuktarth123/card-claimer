@@ -442,7 +442,6 @@ export function EditCardDialog({ card, open, onOpenChange, onSave }: EditCardDia
                 ref={photoFileRef}
                 type="file"
                 accept="image/*"
-                capture="environment"
                 className="hidden"
                 onChange={handlePhotoFileChange}
               />
@@ -514,7 +513,6 @@ export function EditCardDialog({ card, open, onOpenChange, onSave }: EditCardDia
                 ref={videoFileRef}
                 type="file"
                 accept="video/*"
-                capture="environment"
                 className="hidden"
                 onChange={handleVideoFileChange}
               />

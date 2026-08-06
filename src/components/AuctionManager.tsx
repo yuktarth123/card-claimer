@@ -27,12 +27,41 @@ function toDatetimeLocal(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+/** Best-effort deletion of Storage objects backing the given URLs, grouped
+ * by bucket. Silently skips anything that isn't one of this project's
+ * Storage URLs (e.g. never happens here, but matches parseStorageUrl's
+ * contract). Used both when an auction is deleted outright and when an
+ * edit replaces/removes a photo or video, so the old file doesn't become
+ * an orphan nobody can ever clean up again. */
+async function deleteMediaFromStorage(urls: (string | null | undefined)[]) {
+  const pathsByBucket = new Map<string, string[]>();
+  for (const url of urls) {
+    if (!url) continue;
+    const parsed = parseStorageUrl(url);
+    if (!parsed) continue;
+    pathsByBucket.set(parsed.bucket, [...(pathsByBucket.get(parsed.bucket) ?? []), parsed.path]);
+  }
+  for (const [bucket, paths] of pathsByBucket) {
+    const { error } = await supabase.storage.from(bucket).remove(paths);
+    if (error) console.error(`Failed to delete ${bucket} files:`, error);
+  }
+}
+
 export function AuctionManager({ cards }: { cards: DbCard[] }) {
   const [items, setItems] = useState<AuctionItem[]>([]);
   const [blocked, setBlocked] = useState<BlockedBidder[]>([]);
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(Date.now());
   const [editingId, setEditingId] = useState<string | null>(null);
+  // Snapshot of the item's media + source_card_id at the moment editing
+  // started -- lets publish() work out which files got replaced/removed so
+  // it can delete the now-orphaned ones from storage (see deleteMedia).
+  const [editingOriginal, setEditingOriginal] = useState<{
+    photoUrl: string | null;
+    videoUrl: string | null;
+    extraPhotoUrls: string[];
+    sourceCardId: string | null;
+  } | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
 
   const [mode, setMode] = useState<"new" | "existing">("new");
@@ -99,6 +128,7 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
 
   const resetForm = () => {
     setEditingId(null);
+    setEditingOriginal(null);
     setMode("new");
     setSelectedCardId("");
     setTitle("");
@@ -136,6 +166,12 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
 
   const startEdit = (item: AuctionItem) => {
     setEditingId(item.id);
+    setEditingOriginal({
+      photoUrl: item.photo_url,
+      videoUrl: item.video_url,
+      extraPhotoUrls: item.photo_urls ?? [],
+      sourceCardId: item.source_card_id,
+    });
     setMode("new");
     setSelectedCardId("");
     setTitle(item.title);
@@ -261,6 +297,16 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
         toast.error("Couldn't save changes");
       } else {
         toast.success(`Auction updated: ${title}`);
+        // Clean up whatever media this edit just replaced or removed --
+        // otherwise every re-upload leaves the old file orphaned in
+        // storage forever. Skipped for items sourced from an existing
+        // card, since that media is owned by the card, not this auction.
+        if (editingOriginal && !editingOriginal.sourceCardId) {
+          const stalePhoto = editingOriginal.photoUrl && editingOriginal.photoUrl !== photo_url ? editingOriginal.photoUrl : null;
+          const staleVideo = editingOriginal.videoUrl && editingOriginal.videoUrl !== video_url ? editingOriginal.videoUrl : null;
+          const staleExtraPhotos = editingOriginal.extraPhotoUrls.filter((u) => !extraPhotoUrls.includes(u));
+          await deleteMediaFromStorage([stalePhoto, staleVideo, ...staleExtraPhotos]);
+        }
         resetForm();
       }
       return;
@@ -298,12 +344,25 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
 
   const endNow = async (item: AuctionItem) => {
     if (!confirm(`End "${item.title}" right now and declare the current highest bidder the winner?`)) return;
-    const { error } = await supabase.from("auction_items").update({ end_time: new Date().toISOString() }).eq("id", item.id);
+    // Sets status='ended' directly rather than just moving end_time and
+    // letting sync_auction_statuses() catch it -- that function now
+    // auto-extends any *live* zero-bid auction by 24h instead of ending
+    // it, which would otherwise silently undo "End Now" on exactly the
+    // auctions it's meant to force-close.
+    const { error } = await supabase
+      .from("auction_items")
+      .update({
+        status: "ended",
+        end_time: new Date().toISOString(),
+        winner_session_id: item.current_bid_session_id,
+        winner_name: item.current_bid_name,
+        winner_amount: item.current_bid,
+      })
+      .eq("id", item.id);
     if (error) {
       toast.error("Failed to end auction");
       return;
     }
-    await supabase.rpc("sync_auction_statuses");
     toast.success("Auction ended");
   };
 
@@ -320,17 +379,7 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
     // auction -- if it was copied from an existing card (source_card_id
     // set), that file is still owned by the card and must stay.
     if (!item.source_card_id) {
-      const mediaUrls = [item.video_url, item.photo_url, ...(item.photo_urls ?? [])].filter((u): u is string => !!u);
-      const pathsByBucket = new Map<string, string[]>();
-      for (const url of mediaUrls) {
-        const parsed = parseStorageUrl(url);
-        if (!parsed) continue;
-        pathsByBucket.set(parsed.bucket, [...(pathsByBucket.get(parsed.bucket) ?? []), parsed.path]);
-      }
-      for (const [bucket, paths] of pathsByBucket) {
-        const { error: storageError } = await supabase.storage.from(bucket).remove(paths);
-        if (storageError) console.error(`Failed to delete ${bucket} files for auction ${item.id}:`, storageError);
-      }
+      await deleteMediaFromStorage([item.video_url, item.photo_url, ...(item.photo_urls ?? [])]);
     }
   };
 
@@ -461,7 +510,7 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
                   <Button type="button" variant="outline" onClick={() => photoFileRef.current?.click()} className="flex-1 min-w-[140px]">
                     <Camera className="w-4 h-4 mr-2" /> Take / Choose Photo
                   </Button>
-                  <input ref={photoFileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => onPickPhoto(e.target.files?.[0] || null)} />
+                  <input ref={photoFileRef} type="file" accept="image/*" className="hidden" onChange={(e) => onPickPhoto(e.target.files?.[0] || null)} />
                 </div>
                 <div className="flex gap-2">
                   <Input
@@ -500,7 +549,7 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
                 <Button type="button" variant="outline" onClick={() => videoFileRef.current?.click()} disabled={isProcessingVideo} className="flex-1 min-w-[140px]">
                   {isProcessingVideo ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Compressing…</> : <><Video className="w-4 h-4 mr-2" /> Record / Choose Video</>}
                 </Button>
-                <input ref={videoFileRef} type="file" accept="video/*" capture="environment" className="hidden" onChange={(e) => onPickVideo(e.target.files?.[0] || null)} />
+                <input ref={videoFileRef} type="file" accept="video/*" className="hidden" onChange={(e) => onPickVideo(e.target.files?.[0] || null)} />
               </div>
             )}
           </div>

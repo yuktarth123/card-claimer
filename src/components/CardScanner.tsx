@@ -129,7 +129,6 @@ export function CardScanner({ open, onOpenChange, onIdentified }: CardScannerPro
           ref={photoInputRef}
           type="file"
           accept="image/*"
-          capture="environment"
           className="hidden"
           onChange={(e) => handleFileChange(e.target.files?.[0] || null)}
         />
