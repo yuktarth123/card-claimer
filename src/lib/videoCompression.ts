@@ -5,23 +5,20 @@
 //
 // Trade-off worth knowing: MediaRecorder can only emit formats the browser
 // supports encoding, which today usually means WebM (Chrome/Firefox/Android) or,
-// on newer Safari, MP4. We prefer MP4 when available for broader playback
-// compatibility (older iOS Safari doesn't play WebM), falling back to WebM
-// otherwise. If neither is supported, or anything about compression fails, we
-// return the original file untouched -- the caller's size-limit check is the
-// real safety net, this is a best-effort size reduction.
+// on newer Safari, MP4. iOS Safari has no WebM decoder at all -- not "prefers
+// MP4", genuinely can't play WebM in <video> under any circumstances -- and
+// these clips are viewed by buyers on arbitrary devices, so we only ever
+// compress to MP4. If the browser doing the compressing (e.g. Chrome, which
+// can't encode MP4 via MediaRecorder) can't produce MP4, we skip compression
+// and keep the original file untouched rather than upload a WebM that a chunk
+// of buyers can never play. The caller's size-limit check is the real safety
+// net for the "compression skipped and file is still huge" case.
 
-const SUPPORTED_MIME_CANDIDATES = [
-  "video/mp4;codecs=avc1,mp4a",
-  "video/mp4",
-  "video/webm;codecs=vp9,opus",
-  "video/webm;codecs=vp8,opus",
-  "video/webm",
-];
+const MP4_MIME_CANDIDATES = ["video/mp4;codecs=avc1,mp4a", "video/mp4"];
 
 function pickSupportedMimeType(): string | null {
   if (typeof MediaRecorder === "undefined") return null;
-  return SUPPORTED_MIME_CANDIDATES.find((m) => MediaRecorder.isTypeSupported(m)) ?? null;
+  return MP4_MIME_CANDIDATES.find((m) => MediaRecorder.isTypeSupported(m)) ?? null;
 }
 
 export function isVideoCompressionSupported(): boolean {
@@ -161,8 +158,7 @@ export async function compressVideo(file: File, options: CompressOptions = {}): 
       return file;
     }
 
-    const extension = mimeType.startsWith("video/mp4") ? "mp4" : "webm";
-    const newName = file.name.replace(/\.[^./\\]+$/, "") + `.${extension}`;
+    const newName = file.name.replace(/\.[^./\\]+$/, "") + ".mp4";
     return new File([blob], newName, { type: mimeType });
   } catch {
     return file;
