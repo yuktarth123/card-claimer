@@ -427,19 +427,65 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
     return data.buyer_phone;
   };
 
-  const blockWinner = async (item: AuctionItem) => {
+  // Non-payment flow: ban the winner's phone (place_bid rejects it from
+  // here on) and relist the item so it can sell to someone who'll actually
+  // pay. Both steps happen even if the admin only meant to ban -- an ended
+  // auction stuck with an unpaying winner and no way to sell the item isn't
+  // useful, so relisting is the point of this button, not a side effect.
+  const banWinnerAndRerun = async (item: AuctionItem) => {
     const phone = await getWinnerPhone(item);
     if (!phone) {
       toast.error("Couldn't find a phone number for this winner");
       return;
     }
-    if (!confirm(`Block ${item.winner_name} (${phone}) from bidding again for not paying "${item.title}"?`)) return;
+    if (
+      !confirm(
+        `Ban ${item.winner_name} (${phone}) for not paying "${item.title}" and rerun the auction? Bidding reopens from ${CURRENCY}${Number(item.starting_price).toFixed(0)} with a fresh timer.`
+      )
+    )
+      return;
+
     const { error: blockError } = await supabase.from("blocked_bidders").upsert(
       { phone, reason: `Didn't pay for "${item.title}"`, blocked_at: new Date().toISOString() },
       { onConflict: "phone" }
     );
-    if (blockError) toast.error("Failed to block");
-    else toast.success(`${item.winner_name} blocked from future bidding`);
+    if (blockError) {
+      toast.error("Failed to ban winner");
+      return;
+    }
+
+    // Wipe the bid state so nothing carries over from the banned winner --
+    // the relisted auction starts fresh from starting_price, same as any
+    // new auction -- and give it the same duration it originally ran for,
+    // starting now.
+    const durationMs = Math.max(
+      new Date(item.end_time).getTime() - new Date(item.start_time).getTime(),
+      60 * 60 * 1000 // floor at 1h in case the original auction was oddly short
+    );
+    const newStart = new Date();
+    const newEnd = new Date(newStart.getTime() + durationMs);
+
+    const { error: rerunError } = await supabase
+      .from("auction_items")
+      .update({
+        status: "live",
+        start_time: newStart.toISOString(),
+        end_time: newEnd.toISOString(),
+        current_bid: null,
+        current_bid_name: null,
+        current_bid_session_id: null,
+        bid_count: 0,
+        winner_session_id: null,
+        winner_name: null,
+        winner_amount: null,
+      })
+      .eq("id", item.id);
+
+    if (rerunError) {
+      toast.error(`${item.winner_name} banned, but the rerun failed -- relist "${item.title}" manually`);
+      return;
+    }
+    toast.success(`${item.winner_name} banned -- "${item.title}" relisted for ${formatCountdown(durationMs)}`);
   };
 
   const messageWinnerOnWhatsApp = async (item: AuctionItem) => {
@@ -664,7 +710,7 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
                             </Button>
                           )}
                           {status === "ended" && item.winner_name && (
-                            <Button size="icon" variant="ghost" className="h-7 w-7" title="Block winner (didn't pay)" onClick={() => blockWinner(item)}>
+                            <Button size="icon" variant="ghost" className="h-7 w-7" title="Ban winner & rerun auction (didn't pay)" onClick={() => banWinnerAndRerun(item)}>
                               <ShieldOff className="w-4 h-4 text-destructive" />
                             </Button>
                           )}
