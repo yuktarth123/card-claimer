@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Receipt, Search, MessageCircle, PackageCheck, Sparkles } from "lucide-react";
+import { Receipt, Search, MessageCircle, PackageCheck, Sparkles, Gavel } from "lucide-react";
 import { CURRENCY, SELLER_NAME } from "@/config";
 import { buildWhatsAppLink, cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -180,6 +180,7 @@ export function SalesHistory() {
               filtered.map((o) => {
                 const link = whatsAppLinkFor(o);
                 const thumb = o.items.find((i) => i.photo_url)?.photo_url;
+                const isAuctionOrder = o.items.some((i) => i.auction_item_id);
                 return (
                   <div
                     key={o.order_id}
@@ -194,9 +195,14 @@ export function SalesHistory() {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold truncate">
+                      <p className="font-semibold truncate flex items-center gap-1.5">
                         {o.buyer_name}
                         {o.buyer_phone && <span className="text-muted-foreground font-normal"> • {o.buyer_phone}</span>}
+                        {isAuctionOrder && (
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-secondary text-secondary-foreground flex-shrink-0">
+                            <Gavel className="w-2.5 h-2.5" /> Auction
+                          </span>
+                        )}
                       </p>
                       <p className="text-xs text-muted-foreground truncate">
                         {o.items.length} item{o.items.length === 1 ? "" : "s"} — {CURRENCY}{o.total.toFixed(0)}
@@ -233,7 +239,14 @@ export function SalesHistory() {
           {selectedOrder && (
             <>
               <DialogHeader>
-                <DialogTitle>Order details</DialogTitle>
+                <DialogTitle className="flex items-center gap-2">
+                  Order details
+                  {selectedOrder.items.some((i) => i.auction_item_id) && (
+                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-secondary text-secondary-foreground">
+                      <Gavel className="w-2.5 h-2.5" /> Auction
+                    </span>
+                  )}
+                </DialogTitle>
                 <DialogDescription>
                   {format(new Date(selectedOrder.transaction_date), "MMM d, yyyy 'at' h:mm a")}
                   {selectedOrder.sale_id && saleNameById[selectedOrder.sale_id]

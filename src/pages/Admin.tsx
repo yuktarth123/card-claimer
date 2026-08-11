@@ -204,6 +204,7 @@ const Admin = () => {
     ["English", "Japanese", "Chinese", "Korean"].forEach((l) => seen.add(l));
     return Array.from(seen);
   }, [cards]);
+  const preorderCount = useMemo(() => cards.filter((c) => c.is_preorder).length, [cards]);
 
   const onPickPhoto = (file: File | null) => {
     setPhotoFile(file);
@@ -520,6 +521,18 @@ const Admin = () => {
     for (const [bucket, paths] of pathsByBucket) {
       const { error: storageError } = await supabase.storage.from(bucket).remove(paths);
       if (storageError) console.error(`Failed to delete ${bucket} files for card ${card.id}:`, storageError);
+    }
+  };
+
+  const handleMarkAllPreordersReady = async () => {
+    if (!confirm(`Mark all ${preorderCount} pre-order listing(s) as ready stock? You'll still need to enter each item's actual stock count by hand afterward.`)) return;
+    const { data, error } = await supabase.rpc("mark_all_preorders_ready_stock");
+    if (error) {
+      console.error(error);
+      toast.error("Failed to update pre-orders");
+    } else {
+      toast.success(`${data ?? 0} listing(s) marked as ready stock — don't forget to update stock counts.`);
+      fetchCards();
     }
   };
 
@@ -990,6 +1003,17 @@ const Admin = () => {
             <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <span>Live Listings ({cards.length})</span>
               <div className="flex items-center gap-2 flex-wrap">
+                {preorderCount > 0 && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleMarkAllPreordersReady}
+                    title="Flip every pre-order listing to ready stock. Stock counts still need to be entered per item."
+                  >
+                    <PackageCheck className="w-4 h-4 mr-1.5 text-primary" />
+                    Mark all {preorderCount} pre-order{preorderCount === 1 ? "" : "s"} as ready stock
+                  </Button>
+                )}
                 {/* Price Filter */}
                 <div className="flex items-center gap-1">
                   <Filter className="w-4 h-4 text-muted-foreground shrink-0" />

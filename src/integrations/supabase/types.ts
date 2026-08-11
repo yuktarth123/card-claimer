@@ -512,6 +512,7 @@ export type Database = {
       }
       transactions: {
         Row: {
+          auction_item_id: string | null
           buyer_name: string
           buyer_phone: string | null
           buyer_session_id: string | null
@@ -527,6 +528,7 @@ export type Database = {
           transaction_date: string
         }
         Insert: {
+          auction_item_id?: string | null
           buyer_name: string
           buyer_phone?: string | null
           buyer_session_id?: string | null
@@ -542,6 +544,7 @@ export type Database = {
           transaction_date?: string
         }
         Update: {
+          auction_item_id?: string | null
           buyer_name?: string
           buyer_phone?: string | null
           buyer_session_id?: string | null
@@ -557,6 +560,13 @@ export type Database = {
           transaction_date?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "transactions_auction_item_id_fkey"
+            columns: ["auction_item_id"]
+            isOneToOne: false
+            referencedRelation: "auction_items"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "transactions_claim_id_fkey"
             columns: ["claim_id"]
@@ -846,6 +856,7 @@ export type Database = {
           transaction_count: number
         }[]
       }
+      mark_all_preorders_ready_stock: { Args: never; Returns: number }
       mark_claim_as_sold: {
         Args: {
           _buyer_name: string
@@ -934,6 +945,32 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      finalize_auction_sale: {
+        Args: { _auction_item_id: string }
+        Returns: {
+          auction_item_id: string | null
+          buyer_name: string
+          buyer_phone: string | null
+          buyer_session_id: string | null
+          card_name: string
+          claim_id: string | null
+          final_price: number
+          id: string
+          order_id: string
+          original_card_id: string | null
+          photo_url: string | null
+          quantity: number
+          sale_id: string | null
+          transaction_date: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "transactions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      unrecord_auction_sale: { Args: { _auction_item_id: string }; Returns: undefined }
       start_sale: {
         Args: { _name: string }
         Returns: {

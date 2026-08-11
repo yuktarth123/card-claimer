@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import {
-  Camera, Loader2, X, Video, Upload, Gavel, Trash2, StopCircle, Ban, ShieldOff, Trophy, Clock, Pencil, Save, MessageCircle,
+  Camera, Loader2, X, Video, Upload, Gavel, Trash2, StopCircle, Ban, ShieldOff, Trophy, Clock, Pencil, Save, MessageCircle, Receipt, Undo2,
 } from "lucide-react";
 import { CURRENCY, DEFAULT_STARTING_PRICE, DEFAULT_BID_INCREMENT } from "@/config";
 import { AdditionalPhotosField } from "@/components/AdditionalPhotosField";
@@ -50,6 +50,7 @@ async function deleteMediaFromStorage(urls: (string | null | undefined)[]) {
 export function AuctionManager({ cards }: { cards: DbCard[] }) {
   const [items, setItems] = useState<AuctionItem[]>([]);
   const [blocked, setBlocked] = useState<BlockedBidder[]>([]);
+  const [recordedAuctionIds, setRecordedAuctionIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(Date.now());
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -105,9 +106,19 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
     else if (data) setBlocked(data);
   };
 
+  // Which auction wins already have a transactions row -- i.e. have been
+  // recorded in Sales History -- so the list can show "Record Sale" vs.
+  // "Recorded" per item without a separate lookup per row.
+  const fetchRecordedSales = async () => {
+    const { data, error } = await supabase.from("transactions").select("auction_item_id").not("auction_item_id", "is", null);
+    if (error) console.error(error);
+    else if (data) setRecordedAuctionIds(new Set(data.map((t) => t.auction_item_id as string)));
+  };
+
   useEffect(() => {
     fetchItems();
     fetchBlocked();
+    fetchRecordedSales();
     const tick = setInterval(() => setNow(Date.now()), 1000);
 
     const itemsChannel = supabase
@@ -118,11 +129,16 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
       .channel("admin-blocked-bidders")
       .on("postgres_changes", { event: "*", schema: "public", table: "blocked_bidders" }, fetchBlocked)
       .subscribe();
+    const salesChannel = supabase
+      .channel("admin-auction-sales")
+      .on("postgres_changes", { event: "*", schema: "public", table: "transactions" }, fetchRecordedSales)
+      .subscribe();
 
     return () => {
       clearInterval(tick);
       supabase.removeChannel(itemsChannel);
       supabase.removeChannel(blockedChannel);
+      supabase.removeChannel(salesChannel);
     };
   }, []);
 
@@ -488,6 +504,28 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
     toast.success(`${item.winner_name} banned -- "${item.title}" relisted for ${formatCountdown(durationMs)}`);
   };
 
+  const recordSale = async (item: AuctionItem) => {
+    if (!confirm(`Record ${item.winner_name}'s payment of ${CURRENCY}${Number(item.winner_amount).toFixed(0)} for "${item.title}" in Sales History?`)) return;
+    const { error } = await supabase.rpc("finalize_auction_sale", { _auction_item_id: item.id });
+    if (error) {
+      console.error(error);
+      toast.error(error.message || "Failed to record sale");
+    } else {
+      toast.success(`Recorded — "${item.title}" now shows in Sales History`);
+    }
+  };
+
+  const unrecordSale = async (item: AuctionItem) => {
+    if (!confirm(`Remove this recorded sale for "${item.title}" from Sales History?`)) return;
+    const { error } = await supabase.rpc("unrecord_auction_sale", { _auction_item_id: item.id });
+    if (error) {
+      console.error(error);
+      toast.error("Failed to remove recorded sale");
+    } else {
+      toast.success("Removed from Sales History");
+    }
+  };
+
   const messageWinnerOnWhatsApp = async (item: AuctionItem) => {
     const phone = await getWinnerPhone(item);
     if (!phone) {
@@ -687,6 +725,11 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
                           {status === "ended" && item.winner_name && (
                             <p className="text-xs font-semibold text-primary flex items-center gap-1 mt-0.5">
                               <Trophy className="w-3 h-3" /> {item.winner_name} won for {CURRENCY}{Number(item.winner_amount).toFixed(0)}
+                              {recordedAuctionIds.has(item.id) && (
+                                <span className="ml-1 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-success/20 text-success">
+                                  <Receipt className="w-2.5 h-2.5" /> In Sales History
+                                </span>
+                              )}
                             </p>
                           )}
                         </div>
@@ -708,6 +751,17 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
                             <Button size="icon" variant="ghost" className="h-7 w-7" title="Message winner on WhatsApp" onClick={() => messageWinnerOnWhatsApp(item)}>
                               <MessageCircle className="w-4 h-4 text-success" />
                             </Button>
+                          )}
+                          {status === "ended" && item.winner_name && (
+                            recordedAuctionIds.has(item.id) ? (
+                              <Button size="icon" variant="ghost" className="h-7 w-7" title="Remove from Sales History" onClick={() => unrecordSale(item)}>
+                                <Undo2 className="w-4 h-4 text-muted-foreground" />
+                              </Button>
+                            ) : (
+                              <Button size="icon" variant="ghost" className="h-7 w-7" title="Record sale in Sales History (once paid)" onClick={() => recordSale(item)}>
+                                <Receipt className="w-4 h-4 text-primary" />
+                              </Button>
+                            )
                           )}
                           {status === "ended" && item.winner_name && (
                             <Button size="icon" variant="ghost" className="h-7 w-7" title="Ban winner & rerun auction (didn't pay)" onClick={() => banWinnerAndRerun(item)}>
