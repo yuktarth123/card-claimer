@@ -105,6 +105,7 @@ const Admin = () => {
   const [editingCard, setEditingCard] = useState<DbCard | null>(null);
   const [priceFilter, setPriceFilter] = useState<PriceFilter>("all");
   const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
+  const [listingSearch, setListingSearch] = useState("");
 
   const fetchCards = async () => {
     let query = supabase.from("cards").select("*");
@@ -205,6 +206,16 @@ const Admin = () => {
     return Array.from(seen);
   }, [cards]);
   const preorderCount = useMemo(() => cards.filter((c) => c.is_preorder).length, [cards]);
+
+  // Client-side on top of the server-driven price/sort query above --
+  // search doesn't need its own round trip since `cards` is already local.
+  const visibleCards = useMemo(() => {
+    const q = listingSearch.trim().toLowerCase();
+    if (!q) return cards;
+    return cards.filter((c) =>
+      [c.name, c.card_set, c.card_number, c.rarity, c.category].filter(Boolean).some((f) => f!.toLowerCase().includes(q))
+    );
+  }, [cards, listingSearch]);
 
   const onPickPhoto = (file: File | null) => {
     setPhotoFile(file);
@@ -1001,8 +1012,29 @@ const Admin = () => {
         <Card className="gradient-card-bg border-border">
           <CardHeader>
             <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <span>Live Listings ({cards.length})</span>
+              <span>
+                Live Listings ({visibleCards.length}
+                {listingSearch.trim() && visibleCards.length !== cards.length ? ` of ${cards.length}` : ""})
+              </span>
               <div className="flex items-center gap-2 flex-wrap">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    value={listingSearch}
+                    onChange={(e) => setListingSearch(e.target.value)}
+                    placeholder="Search listings…"
+                    className="h-9 w-[160px] sm:w-[200px] pl-8 pr-7"
+                  />
+                  {listingSearch && (
+                    <button
+                      onClick={() => setListingSearch("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      aria-label="Clear search"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
                 {preorderCount > 0 && (
                   <Button
                     size="sm"
@@ -1056,7 +1088,10 @@ const Admin = () => {
               {cards.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-8">No listings yet.</p>
               )}
-              {cards.map((c) => {
+              {cards.length > 0 && visibleCards.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-8">No listings match "{listingSearch}".</p>
+              )}
+              {visibleCards.map((c) => {
                 const cardClaims = claimsForCard(c.id);
                 return (
                   <div key={c.id} className="rounded-lg border border-border bg-background/40 overflow-hidden">
