@@ -20,6 +20,7 @@ const Bidding = () => {
   const [items, setItems] = useState<AuctionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(Date.now());
+  const [cardPrices, setCardPrices] = useState<Record<string, number>>({});
 
   useEffect(() => {
     const tick = setInterval(() => setNow(Date.now()), 1000);
@@ -75,6 +76,29 @@ const Bidding = () => {
     const interval = setInterval(sweep, 15_000);
     return () => clearInterval(interval);
   }, []);
+
+  // Buy Now needs each card-linked auction's current sale price. Keyed off
+  // the distinct set of source_card_ids (not `items` itself) so a realtime
+  // bid update elsewhere doesn't retrigger this fetch.
+  const sourceCardIds = useMemo(
+    () => [...new Set(items.map((i) => i.source_card_id).filter((id): id is string => !!id))].sort().join(","),
+    [items]
+  );
+
+  useEffect(() => {
+    if (!sourceCardIds) return;
+    supabase
+      .from("cards")
+      .select("id, price, sale_price")
+      .in("id", sourceCardIds.split(","))
+      .then(({ data, error }) => {
+        if (error) { console.error("Error fetching card prices:", error); return; }
+        if (!data) return;
+        const map: Record<string, number> = {};
+        for (const c of data) map[c.id] = Number(c.sale_price ?? c.price);
+        setCardPrices(map);
+      });
+  }, [sourceCardIds]);
 
   const { live, scheduled, ended } = useMemo(() => {
     const live: AuctionItem[] = [];
@@ -169,21 +193,42 @@ const Bidding = () => {
             {live.length > 0 && (
               <Section title={`Live Now (${live.length})`}>
                 {live.map((item) => (
-                  <AuctionCard key={item.id} item={item} sessionId={sessionId} buyerName={name} buyerPhone={phone} />
+                  <AuctionCard
+                    key={item.id}
+                    item={item}
+                    sessionId={sessionId}
+                    buyerName={name}
+                    buyerPhone={phone}
+                    buyNowPrice={item.source_card_id ? cardPrices[item.source_card_id] : undefined}
+                  />
                 ))}
               </Section>
             )}
             {scheduled.length > 0 && (
               <Section title={`Upcoming (${scheduled.length})`}>
                 {scheduled.map((item) => (
-                  <AuctionCard key={item.id} item={item} sessionId={sessionId} buyerName={name} buyerPhone={phone} />
+                  <AuctionCard
+                    key={item.id}
+                    item={item}
+                    sessionId={sessionId}
+                    buyerName={name}
+                    buyerPhone={phone}
+                    buyNowPrice={item.source_card_id ? cardPrices[item.source_card_id] : undefined}
+                  />
                 ))}
               </Section>
             )}
             {ended.length > 0 && (
               <Section title="Recently Ended">
                 {ended.map((item) => (
-                  <AuctionCard key={item.id} item={item} sessionId={sessionId} buyerName={name} buyerPhone={phone} />
+                  <AuctionCard
+                    key={item.id}
+                    item={item}
+                    sessionId={sessionId}
+                    buyerName={name}
+                    buyerPhone={phone}
+                    buyNowPrice={item.source_card_id ? cardPrices[item.source_card_id] : undefined}
+                  />
                 ))}
               </Section>
             )}

@@ -545,6 +545,22 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
     toast.success(`${item.winner_name} banned -- "${item.title}" relisted for ${formatCountdown(durationMs)}`);
   };
 
+  // Buy Now purchase went unpaid. Unlike banWinnerAndRerun this doesn't wipe
+  // the auction back to starting_price -- it restores whatever bid was
+  // winning right before the buy-now (or a clean no-bids state if there
+  // wasn't one) and reopens bidding from there, since that's the actual
+  // point of "resume" rather than "restart".
+  const resumeBidding = async (item: AuctionItem) => {
+    if (!confirm(`Resume bidding on "${item.title}"? This undoes ${item.winner_name}'s unpaid Buy Now and reopens the auction from whatever was winning before it.`)) return;
+    const { error } = await supabase.rpc("admin_resume_bidding", { _auction_item_id: item.id });
+    if (error) {
+      console.error(error);
+      toast.error(error.message || "Failed to resume bidding");
+    } else {
+      toast.success(`Bidding resumed on "${item.title}"`);
+    }
+  };
+
   const recordSale = async (item: AuctionItem) => {
     if (!confirm(`Record ${item.winner_name}'s payment of ${CURRENCY}${Number(item.winner_amount).toFixed(0)} for "${item.title}" in Sales History?`)) return;
     const { error } = await supabase.rpc("finalize_auction_sale", { _auction_item_id: item.id });
@@ -803,6 +819,11 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
                           {status === "ended" && item.winner_name && (
                             <p className="text-xs font-semibold text-primary flex items-center gap-1 mt-0.5">
                               <Trophy className="w-3 h-3" /> {item.winner_name} won for {CURRENCY}{Number(item.winner_amount).toFixed(0)}
+                              {item.ended_via_buy_now && !recordedAuctionIds.has(item.id) && (
+                                <span className="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-primary/20 text-primary">
+                                  Buy Now · unpaid
+                                </span>
+                              )}
                               {recordedAuctionIds.has(item.id) && (
                                 <span className="ml-1 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-success/20 text-success">
                                   <Receipt className="w-2.5 h-2.5" /> In Sales History
@@ -840,6 +861,11 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
                                 <Receipt className="w-4 h-4 text-primary" />
                               </Button>
                             )
+                          )}
+                          {status === "ended" && item.ended_via_buy_now && !recordedAuctionIds.has(item.id) && (
+                            <Button size="icon" variant="ghost" className="h-7 w-7" title="Resume bidding (Buy Now went unpaid)" onClick={() => resumeBidding(item)}>
+                              <Gavel className="w-4 h-4 text-primary" />
+                            </Button>
                           )}
                           {status === "ended" && item.winner_name && (
                             <Button size="icon" variant="ghost" className="h-7 w-7" title="Ban winner & rerun auction (didn't pay)" onClick={() => banWinnerAndRerun(item)}>

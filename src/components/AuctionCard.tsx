@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Gavel, Loader2, Trophy, Clock, ImageOff } from "lucide-react";
+import { Gavel, Loader2, Trophy, Clock, ImageOff, Zap } from "lucide-react";
 import { CURRENCY } from "@/config";
 import { cn } from "@/lib/utils";
 import { effectiveAuctionStatus, nextMinBid, formatCountdown } from "@/lib/auction";
@@ -17,12 +17,16 @@ interface Props {
   sessionId: string;
   buyerName: string;
   buyerPhone: string;
+  /** The linked card's current sale price -- undefined/null when this
+   * auction isn't sourced from an existing card (no price to anchor to). */
+  buyNowPrice?: number | null;
 }
 
-export function AuctionCard({ item, sessionId, buyerName, buyerPhone }: Props) {
+export function AuctionCard({ item, sessionId, buyerName, buyerPhone, buyNowPrice }: Props) {
   const [now, setNow] = useState(Date.now());
   const [customAmount, setCustomAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [buyingNow, setBuyingNow] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 1000);
@@ -53,6 +57,31 @@ export function AuctionCard({ item, sessionId, buyerName, buyerPhone }: Props) {
     } else {
       toast.success(`Bid placed: ${CURRENCY}${amount.toFixed(0)}!`);
       setCustomAmount("");
+    }
+  };
+
+  const canBuyNow =
+    status === "live" &&
+    buyNowPrice != null &&
+    (item.current_bid == null || item.current_bid < buyNowPrice);
+
+  const buyNow = async () => {
+    if (!buyerName || buyNowPrice == null) return;
+    if (!confirm(`Buy this now for ${CURRENCY}${buyNowPrice.toFixed(0)}? This ends the auction immediately -- you win it at this price, no more bidding.`)) return;
+    setBuyingNow(true);
+    const { error } = await supabase.rpc("buy_now_auction", {
+      _auction_item_id: item.id,
+      _session_id: sessionId,
+      _buyer_name: buyerName,
+      _buyer_phone: buyerPhone || null,
+    });
+    setBuyingNow(false);
+    if (error) {
+      toast.error(error.message || "Couldn't complete Buy Now");
+    } else {
+      toast.success(`You bought it for ${CURRENCY}${buyNowPrice.toFixed(0)}! 🎉`, {
+        description: "We'll reach out on WhatsApp to arrange payment.",
+      });
     }
   };
 
@@ -129,6 +158,17 @@ export function AuctionCard({ item, sessionId, buyerName, buyerPhone }: Props) {
 
         {status === "live" && (
           <div className="space-y-1.5 mt-auto pt-1">
+            {canBuyNow && (
+              <Button
+                size="sm"
+                className="w-full bg-success hover:bg-success/90 text-success-foreground font-bold"
+                disabled={buyingNow || !buyerName}
+                onClick={buyNow}
+              >
+                {buyingNow ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Zap className="w-3.5 h-3.5 mr-1.5" />}
+                Buy Now {CURRENCY}{buyNowPrice!.toFixed(0)}
+              </Button>
+            )}
             <Button
               size="sm"
               className="w-full gradient-gold text-primary-foreground font-bold"
