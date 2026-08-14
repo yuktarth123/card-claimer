@@ -964,6 +964,38 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      admin_ban_and_undo_bids: {
+        Args: { _phone: string; _reason?: string }
+        Returns: {
+          bid_count: number
+          bid_increment: number
+          created_at: string
+          current_bid: number | null
+          current_bid_name: string | null
+          current_bid_session_id: string | null
+          description: string | null
+          end_time: string
+          ended_via_buy_now: boolean
+          id: string
+          photo_url: string | null
+          photo_urls: string[]
+          source_card_id: string | null
+          start_time: string
+          starting_price: number
+          status: string
+          title: string
+          video_url: string | null
+          winner_amount: number | null
+          winner_name: string | null
+          winner_session_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "auction_items"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       place_bid: {
         Args: {
           _amount: number

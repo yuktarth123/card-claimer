@@ -11,7 +11,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { toast } from "sonner";
 import {
   Camera, Loader2, X, Video, Upload, Gavel, Trash2, StopCircle, Ban, ShieldOff, Trophy, Clock, Pencil, Save, MessageCircle, Receipt, Undo2,
-  ChevronsUpDown, Check,
+  ChevronsUpDown, Check, UserX,
 } from "lucide-react";
 import { CURRENCY, DEFAULT_STARTING_PRICE, DEFAULT_BID_INCREMENT } from "@/config";
 import { AdditionalPhotosField } from "@/components/AdditionalPhotosField";
@@ -447,14 +447,22 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
       return;
     }
     setBlockBusy(true);
-    const { error } = await supabase.from("blocked_bidders").upsert(
-      { phone: digits, reason: blockReason.trim() || null, blocked_at: new Date().toISOString() },
-      { onConflict: "phone" }
-    );
+    // Routed through admin_ban_and_undo_bids rather than a raw upsert so a
+    // manual block here also sweeps and reverts any live auction this phone
+    // is currently winning -- not just per-item bans via the auction list.
+    const { data, error } = await supabase.rpc("admin_ban_and_undo_bids", {
+      _phone: digits,
+      _reason: blockReason.trim() || null,
+    });
     setBlockBusy(false);
-    if (error) toast.error("Failed to block");
+    if (error) toast.error(error.message || "Failed to block");
     else {
-      toast.success(`Blocked ${digits}`);
+      const affected = data ?? [];
+      toast.success(
+        affected.length > 0
+          ? `Blocked ${digits} — undid their bid on ${affected.length} live auction${affected.length === 1 ? "" : "s"}`
+          : `Blocked ${digits}`
+      );
       setBlockPhone("");
       setBlockReason("");
     }
@@ -543,6 +551,54 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
       return;
     }
     toast.success(`${item.winner_name} banned -- "${item.title}" relisted for ${formatCountdown(durationMs)}`);
+  };
+
+  // Same idea as getWinnerPhone but for a still-LIVE item, keyed on
+  // current_bid_session_id since there's no winner_session_id yet.
+  const getCurrentBidderPhone = async (item: AuctionItem): Promise<string | null> => {
+    if (!item.current_bid_session_id) return null;
+    const { data, error } = await supabase
+      .from("auction_bids")
+      .select("buyer_phone")
+      .eq("auction_item_id", item.id)
+      .eq("buyer_session_id", item.current_bid_session_id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error || !data?.buyer_phone) return null;
+    return data.buyer_phone;
+  };
+
+  // A troll is currently winning a live auction (fake/inflated bid) and
+  // needs pulling out right away -- unlike banWinnerAndRerun this doesn't
+  // wait for the auction to end. Bans the phone and sweeps every live
+  // auction where that phone's session is currently the top bid, reverting
+  // each back to whatever the last legitimate bid was (server-side, via
+  // admin_ban_and_undo_bids -- see that function for why it walks back past
+  // more than just the single most recent bid).
+  const banCurrentBidderAndUndo = async (item: AuctionItem) => {
+    const phone = await getCurrentBidderPhone(item);
+    if (!phone) {
+      toast.error("Couldn't find a phone number for this bidder");
+      return;
+    }
+    if (
+      !confirm(
+        `Ban ${item.current_bid_name} (${phone}) and undo their bid on "${item.title}"? This also reverts any other live auction where they're currently the top bidder.`
+      )
+    )
+      return;
+    const { data, error } = await supabase.rpc("admin_ban_and_undo_bids", {
+      _phone: phone,
+      _reason: `Suspicious bid on "${item.title}"`,
+    });
+    if (error) {
+      console.error(error);
+      toast.error(error.message || "Failed to ban bidder");
+    } else {
+      const affected = data ?? [];
+      toast.success(`Banned ${item.current_bid_name} — undid their bid on ${affected.length} live auction${affected.length === 1 ? "" : "s"}`);
+    }
   };
 
   // Buy Now purchase went unpaid. Unlike banWinnerAndRerun this doesn't wipe
@@ -844,6 +900,11 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
                           {(status === "scheduled" || status === "live") && (
                             <Button size="icon" variant="ghost" className="h-7 w-7" title="Cancel" onClick={() => cancelAuction(item)}>
                               <Ban className="w-4 h-4 text-destructive" />
+                            </Button>
+                          )}
+                          {status === "live" && item.current_bid_session_id && (
+                            <Button size="icon" variant="ghost" className="h-7 w-7" title="Ban current bidder & undo their bid" onClick={() => banCurrentBidderAndUndo(item)}>
+                              <UserX className="w-4 h-4 text-destructive" />
                             </Button>
                           )}
                           {status === "ended" && item.winner_name && (
