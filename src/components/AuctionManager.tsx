@@ -11,7 +11,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { toast } from "sonner";
 import {
   Camera, Loader2, X, Video, Upload, Gavel, Trash2, StopCircle, Ban, ShieldOff, Trophy, Clock, Pencil, Save, MessageCircle, Receipt, Undo2,
-  ChevronsUpDown, Check, UserX,
+  ChevronsUpDown, Check, UserX, Zap,
 } from "lucide-react";
 import { CURRENCY, DEFAULT_STARTING_PRICE, DEFAULT_BID_INCREMENT } from "@/config";
 import { AdditionalPhotosField } from "@/components/AdditionalPhotosField";
@@ -874,7 +874,11 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
                           </p>
                           {status === "ended" && item.winner_name && (
                             <p className="text-xs font-semibold text-primary flex items-center gap-1 mt-0.5">
-                              <Trophy className="w-3 h-3" /> {item.winner_name} won for {CURRENCY}{Number(item.winner_amount).toFixed(0)}
+                              {item.ended_via_buy_now ? (
+                                <><Zap className="w-3 h-3" /> {item.winner_name} bought directly for {CURRENCY}{Number(item.winner_amount).toFixed(0)}</>
+                              ) : (
+                                <><Trophy className="w-3 h-3" /> {item.winner_name} won for {CURRENCY}{Number(item.winner_amount).toFixed(0)}</>
+                              )}
                               {item.ended_via_buy_now && !recordedAuctionIds.has(item.id) && (
                                 <span className="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-primary/20 text-primary">
                                   Buy Now · unpaid

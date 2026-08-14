@@ -133,9 +133,19 @@ export function AuctionCard({ item, sessionId, buyerName, buyerPhone, buyNowPric
           {status === "ended" ? (
             item.winner_name ? (
               <p className="text-sm flex items-center gap-1.5">
-                <Trophy className="w-4 h-4 text-primary" />
-                <span className="font-semibold">{item.winner_name}</span> won for{" "}
-                <span className="font-bold">{CURRENCY}{Number(item.winner_amount).toFixed(0)}</span>
+                {item.ended_via_buy_now ? (
+                  <>
+                    <Zap className="w-4 h-4 text-success" />
+                    <span className="font-semibold">{item.winner_name}</span> bought this directly for{" "}
+                    <span className="font-bold">{CURRENCY}{Number(item.winner_amount).toFixed(0)}</span>
+                  </>
+                ) : (
+                  <>
+                    <Trophy className="w-4 h-4 text-primary" />
+                    <span className="font-semibold">{item.winner_name}</span> won for{" "}
+                    <span className="font-bold">{CURRENCY}{Number(item.winner_amount).toFixed(0)}</span>
+                  </>
+                )}
               </p>
             ) : (
               <p className="text-sm text-muted-foreground">No bids — unsold</p>
