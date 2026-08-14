@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
@@ -6,15 +6,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { toast } from "sonner";
 import {
   Camera, Loader2, X, Video, Upload, Gavel, Trash2, StopCircle, Ban, ShieldOff, Trophy, Clock, Pencil, Save, MessageCircle, Receipt, Undo2,
+  ChevronsUpDown, Check,
 } from "lucide-react";
 import { CURRENCY, DEFAULT_STARTING_PRICE, DEFAULT_BID_INCREMENT } from "@/config";
 import { AdditionalPhotosField } from "@/components/AdditionalPhotosField";
 import { prepareVideoForUpload, isPayloadTooLargeError } from "@/lib/videoUpload";
-import { parseStorageUrl, buildWhatsAppLink } from "@/lib/utils";
+import { parseStorageUrl, buildWhatsAppLink, cn } from "@/lib/utils";
 import { effectiveAuctionStatus, formatCountdown } from "@/lib/auction";
 
 type DbCard = Database["public"]["Tables"]["cards"]["Row"];
@@ -67,6 +69,8 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
 
   const [mode, setMode] = useState<"new" | "existing">("new");
   const [selectedCardId, setSelectedCardId] = useState("");
+  const [cardPickerOpen, setCardPickerOpen] = useState(false);
+  const inStockCards = useMemo(() => cards.filter((c) => c.quantity_available > 0), [cards]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [startingPrice, setStartingPrice] = useState(String(DEFAULT_STARTING_PRICE));
@@ -605,14 +609,51 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
           {mode === "existing" && !editingId && (
             <div className="space-y-2">
               <Label>Pick a listing</Label>
-              <Select value={selectedCardId} onValueChange={onSelectCard}>
-                <SelectTrigger><SelectValue placeholder="Choose a card…" /></SelectTrigger>
-                <SelectContent className="max-h-72">
-                  {cards.filter((c) => c.quantity_available > 0).map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name} — {CURRENCY}{Number(c.price).toFixed(0)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={cardPickerOpen} onOpenChange={setCardPickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={cardPickerOpen}
+                    className="w-full h-10 justify-between font-normal"
+                  >
+                    <span className="truncate">
+                      {selectedCardId
+                        ? (() => {
+                            const c = inStockCards.find((c) => c.id === selectedCardId);
+                            return c ? `${c.name} — ${CURRENCY}${Number(c.price).toFixed(0)}` : "Choose a card…";
+                          })()
+                        : "Choose a card…"}
+                    </span>
+                    <ChevronsUpDown className="w-4 h-4 shrink-0 opacity-50 ml-2" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search listings by name, set, or number…" />
+                    <CommandList className="max-h-72">
+                      <CommandEmpty>No in-stock listings match.</CommandEmpty>
+                      <CommandGroup>
+                        {inStockCards.map((c) => (
+                          <CommandItem
+                            key={c.id}
+                            value={c.id}
+                            keywords={[c.name, c.card_set, c.card_number].filter((v): v is string => Boolean(v))}
+                            onSelect={() => {
+                              onSelectCard(c.id);
+                              setCardPickerOpen(false);
+                            }}
+                          >
+                            <Check className={cn("w-4 h-4 mr-2 shrink-0", selectedCardId === c.id ? "opacity-100" : "opacity-0")} />
+                            <span className="truncate">{c.name} — {CURRENCY}{Number(c.price).toFixed(0)}</span>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
           )}
 
