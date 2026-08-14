@@ -328,8 +328,23 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
       return;
     }
 
+    const sourceCardId = mode === "existing" ? selectedCardId || null : null;
+
+    // Reserve the unit before creating the listing -- otherwise the card
+    // stays fully claimable from the storefront for however long it takes
+    // this call to complete, and a buyer could still double-sell it in
+    // that window.
+    if (sourceCardId) {
+      const { error: reserveError } = await supabase.rpc("reserve_card_for_auction", { _card_id: sourceCardId });
+      if (reserveError) {
+        toast.error(reserveError.message || "Couldn't reserve that listing's stock");
+        setPublishing(false);
+        return;
+      }
+    }
+
     const { error } = await supabase.from("auction_items").insert({
-      source_card_id: mode === "existing" ? selectedCardId || null : null,
+      source_card_id: sourceCardId,
       title: title.trim(),
       description: description.trim() || null,
       photo_url,
@@ -345,6 +360,10 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
     if (error) {
       console.error(error);
       toast.error("Couldn't create auction");
+      // The auction never got created, so undo the reservation instead of
+      // leaving that unit stranded as unavailable with nothing accounting
+      // for it.
+      if (sourceCardId) await supabase.rpc("release_card_from_auction", { _card_id: sourceCardId });
     } else {
       toast.success(`Auction created: ${title}`);
       resetForm();
@@ -354,8 +373,13 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
   const cancelAuction = async (item: AuctionItem) => {
     if (!confirm(`Cancel the auction for "${item.title}"? Bids already placed stay on record but no winner will be declared.`)) return;
     const { error } = await supabase.from("auction_items").update({ status: "cancelled" }).eq("id", item.id);
-    if (error) toast.error("Failed to cancel");
-    else toast.success("Auction cancelled");
+    if (error) {
+      toast.error("Failed to cancel");
+      return;
+    }
+    toast.success("Auction cancelled");
+    // Never sold, so give the reserved unit back to the storefront.
+    if (item.source_card_id) await supabase.rpc("release_card_from_auction", { _card_id: item.source_card_id });
   };
 
   const endNow = async (item: AuctionItem) => {
@@ -380,6 +404,11 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
       return;
     }
     toast.success("Auction ended");
+    // No bids means no winner, so this unit never actually sold -- release
+    // it back to the storefront instead of leaving it stuck unavailable.
+    if (item.source_card_id && !item.current_bid_name) {
+      await supabase.rpc("release_card_from_auction", { _card_id: item.source_card_id });
+    }
   };
 
   const deleteAuction = async (item: AuctionItem) => {
@@ -396,6 +425,14 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
     // set), that file is still owned by the card and must stay.
     if (!item.source_card_id) {
       await deleteMediaFromStorage([item.video_url, item.photo_url, ...(item.photo_urls ?? [])]);
+    }
+
+    // Only release stock if this unit never actually sold -- an ended
+    // auction with a winner already represents a completed sale, and
+    // deleting the auction record afterward shouldn't make that unit look
+    // available in the storefront again.
+    if (item.source_card_id && !item.winner_name) {
+      await supabase.rpc("release_card_from_auction", { _card_id: item.source_card_id });
     }
   };
 
@@ -571,7 +608,7 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
               <Select value={selectedCardId} onValueChange={onSelectCard}>
                 <SelectTrigger><SelectValue placeholder="Choose a card…" /></SelectTrigger>
                 <SelectContent className="max-h-72">
-                  {cards.map((c) => (
+                  {cards.filter((c) => c.quantity_available > 0).map((c) => (
                     <SelectItem key={c.id} value={c.id}>{c.name} — {CURRENCY}{Number(c.price).toFixed(0)}</SelectItem>
                   ))}
                 </SelectContent>

@@ -889,6 +889,8 @@ export type Database = {
       }
       release_claim: { Args: { _claim_id: string; _session_id: string }; Returns: undefined }
       release_expired_claims: { Args: never; Returns: undefined }
+      reserve_card_for_auction: { Args: { _card_id: string }; Returns: undefined }
+      release_card_from_auction: { Args: { _card_id: string }; Returns: undefined }
       sync_auction_statuses: { Args: never; Returns: undefined }
       place_bid: {
         Args: {
