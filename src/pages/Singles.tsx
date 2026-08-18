@@ -39,7 +39,7 @@ const Singles = () => {
   const [conditionFilter, setConditionFilter] = useState(ALL);
   const [preorderOnly, setPreorderOnly] = useState(false);
   const [vintageOnly, setVintageOnly] = useState(false);
-  const [sortOrder, setSortOrder] = useState<SortOrder>("price-desc");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("none");
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const availableSets = useMemo(

@@ -36,7 +36,7 @@ const Accessories = () => {
   const [categoryFilter, setCategoryFilter] = useState(ALL);
   const [conditionFilter, setConditionFilter] = useState(ALL);
   const [preorderOnly, setPreorderOnly] = useState(false);
-  const [sortOrder, setSortOrder] = useState<SortOrder>("price-desc");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("none");
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const availableCategories = useMemo(
