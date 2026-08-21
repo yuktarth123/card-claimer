@@ -76,6 +76,12 @@ const Slabs = () => {
       filteredCards = [...filteredCards].sort((a, b) => Number(b.price) - Number(a.price));
     }
 
+    // Out-of-stock listings sink to the bottom, but a stable sort keeps
+    // everything else in whatever order the block above produced.
+    filteredCards = [...filteredCards].sort((a, b) =>
+      (a.quantity_available > 0 ? 0 : 1) - (b.quantity_available > 0 ? 0 : 1)
+    );
+
     return filteredCards;
   }, [cards, search, gradingCompanyFilter, rarityFilter, visualTierFilter, sortOrder]);
 
