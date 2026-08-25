@@ -18,10 +18,10 @@ interface Props {
   sessionId: string;
 }
 
-/** Opt-in control for auction-winner push notifications. Renders nothing
- * on browsers without Push API support (e.g. Safari on iOS unless the site
- * has been added to the home screen) -- there's nothing useful to offer
- * there. */
+/** Opt-in control for auction push notifications (outbid alerts and
+ * winner notifications). Renders nothing on browsers without Push API
+ * support (e.g. Safari on iOS unless the site has been added to the home
+ * screen) -- there's nothing useful to offer there. */
 export function PushOptIn({ sessionId }: Props) {
   const [supported, setSupported] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
@@ -62,7 +62,7 @@ export function PushOptIn({ sessionId }: Props) {
       });
       if (error) throw error;
       setSubscribed(true);
-      toast.success("You'll get a notification if you win!");
+      toast.success("You'll get notified if you're outbid or if you win!");
     } catch (err) {
       console.error(err);
       toast.error("Couldn't enable notifications on this device.");
@@ -84,7 +84,7 @@ export function PushOptIn({ sessionId }: Props) {
   return (
     <Button variant="outline" size="sm" onClick={subscribe} disabled={busy || !sessionId} className="gap-1.5">
       {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Bell className="w-3.5 h-3.5" />}
-      Notify me if I win
+      Notify me about my bids
     </Button>
   );
 }
