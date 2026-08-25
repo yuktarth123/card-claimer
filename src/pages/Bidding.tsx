@@ -120,7 +120,7 @@ const Bidding = () => {
       <NameGate
         open={!name || !phone}
         initialName={name}
-        description="Enter your name and phone to start bidding. Your phone is how we'll reach you if you win."
+        description="Enter your name and phone to start bidding. If you win, we'll contact you on WhatsApp to complete your order."
         onSubmit={(n, p) => {
           setIdentity(n, p);
           toast.success(`Welcome, ${n}! 👋`, { description: "Good luck bidding!" });

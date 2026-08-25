@@ -67,7 +67,7 @@ export const MIN_BID_AMOUNT = 100;
 export const DEFAULT_STARTING_PRICE = 100;
 export const DEFAULT_BID_INCREMENT = 100;
 export const BID_DISCLAIMER =
-  "Please bid responsibly — by placing a bid, you're committing to pay the full amount if you win. To keep things fair for everyone, we may not be able to let winners who don't complete payment bid again in the future. Thanks for understanding!";
+  "Please bid responsibly — by placing a bid, you're committing to pay the full amount if you win. If you win, we'll contact you on WhatsApp to complete your order. To keep things fair for everyone, we may not be able to let winners who don't complete payment bid again in the future. Thanks for understanding!";
 
 // Web Push public key -- safe to expose in client code, it only identifies
 // this app to the push service. Its private counterpart lives only as the
