@@ -711,7 +711,11 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                  <Command>
+                  {/* value is the card's uuid (needed for selection tracking), which
+                      cmdk would otherwise also fuzzy-match against -- a search term
+                      can coincidentally match random id characters and surface an
+                      unrelated card. Restrict matching to the keywords instead. */}
+                  <Command filter={(_value, search, keywords) => ((keywords ?? []).join(" ").toLowerCase().includes(search.toLowerCase()) ? 1 : 0)}>
                     <CommandInput placeholder="Search listings by name, set, or number…" />
                     <CommandList className="max-h-72">
                       <CommandEmpty>No in-stock listings match.</CommandEmpty>
