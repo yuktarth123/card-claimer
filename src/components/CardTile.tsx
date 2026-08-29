@@ -62,13 +62,21 @@ export function CardTile({ card, myClaims, onClaim, onUnclaim, disabled, isSaleL
     setIsVideoPlaying(true);
   };
 
-  // Same idea for the photo slideshow -- only cycle while the card is
-  // actually visible, so an entire grid of listings isn't ticking timers
-  // for cards the buyer hasn't scrolled to.
+  // Same idea for the photo slideshow and the tier-ring/claim-button glow
+  // animations -- only run them while the card is actually visible, so an
+  // entire grid of listings isn't ticking timers/animating off-screen. A
+  // tight threshold here would flip isInView (and so restart those CSS
+  // animations) right at the exact moment a card crosses the viewport edge
+  // -- i.e. constantly, while actively scrolling -- which reads as the grid
+  // blinking. The generous rootMargin keeps that boundary well outside the
+  // visible area so toggling doesn't happen while a card is on screen.
   useEffect(() => {
     const el = imageContainerRef.current;
     if (!el) return;
-    const observer = new IntersectionObserver(([entry]) => setIsInView(entry.isIntersecting), { threshold: 0.5 });
+    const observer = new IntersectionObserver(([entry]) => setIsInView(entry.isIntersecting), {
+      threshold: 0,
+      rootMargin: "200px 0px",
+    });
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
