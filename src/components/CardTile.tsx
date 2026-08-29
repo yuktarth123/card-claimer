@@ -158,9 +158,13 @@ export function CardTile({ card, myClaims, onClaim, onUnclaim, disabled, isSaleL
       ? "slab-ring-holo"
       : null;
 
+  // gradient-pan/pulse-glow animate paint properties (background-position,
+  // box-shadow), not compositor ones -- with many cards in the grid, running
+  // them off-screen is pure repaint cost that shows up as scroll jank on
+  // iOS. Only animate while the card is actually visible (isInView, above).
   const Ring = ({ children }: { children: React.ReactNode }) =>
     tierRingClass ? (
-      <div className={cn("rounded-2xl p-[3px] animate-gradient-pan", tierRingClass)}>{children}</div>
+      <div className={cn("rounded-2xl p-[3px]", tierRingClass, isInView && "animate-gradient-pan")}>{children}</div>
     ) : (
       <>{children}</>
     );
@@ -271,8 +275,8 @@ export function CardTile({ card, myClaims, onClaim, onUnclaim, disabled, isSaleL
                 <Badge
                   className={cn(
                     "max-w-full border-0 shadow-md font-bold",
-                    tierRingClass === "slab-ring-gold" && "gradient-gold text-primary-foreground animate-pulse-glow",
-                    tierRingClass === "slab-ring-holo" && "slab-ring-holo animate-gradient-pan text-white",
+                    tierRingClass === "slab-ring-gold" && cn("gradient-gold text-primary-foreground", isInView && "animate-pulse-glow"),
+                    tierRingClass === "slab-ring-holo" && cn("slab-ring-holo text-white", isInView && "animate-gradient-pan"),
                     !tierRingClass && "bg-card text-foreground border border-border"
                   )}
                 >
@@ -376,7 +380,9 @@ export function CardTile({ card, myClaims, onClaim, onUnclaim, disabled, isSaleL
                 disabled={isClaimButtonDisabled}
                 className={cn(
                   "sm:flex-1 min-w-0 px-1.5 text-xs sm:text-sm text-primary-foreground font-bold",
-                  isClaimButtonDisabled ? "bg-muted-foreground/50 cursor-not-allowed" : "gradient-gold hover:opacity-90 shadow-glow animate-pulse-glow"
+                  isClaimButtonDisabled
+                    ? "bg-muted-foreground/50 cursor-not-allowed"
+                    : cn("gradient-gold hover:opacity-90 shadow-glow", isInView && "animate-pulse-glow")
                 )}
               >
                 <span className="truncate">{isSaleLive ? (card.is_preorder ? "Order" : "Claim") : "Coming Soon"}</span>

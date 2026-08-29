@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Camera, X, Loader2, Video } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { prepareImageForUpload } from "@/lib/imagePrep";
 import { Database } from "@/integrations/supabase/types";
 import { CURRENCY, CARD_CONDITIONS, ITEM_TYPES, PREORDER_MIN_DAYS, PREORDER_MAX_DAYS, GRADING_COMPANIES, VISUAL_TIERS } from "@/config";
 import { AdditionalPhotosField } from "@/components/AdditionalPhotosField";
@@ -173,8 +174,16 @@ export function EditCardDialog({ card, open, onOpenChange, onSave }: EditCardDia
     let newVideoUrl = card.video_url;
 
     if (photoFile) {
-      const photoPath = `card-images/${Date.now()}-${Math.random().toString(36).slice(2)}-${photoFile.name}`;
-      const { error: uploadError } = await supabase.storage.from("card-images").upload(photoPath, photoFile, {
+      let preparedPhoto: File;
+      try {
+        preparedPhoto = await prepareImageForUpload(photoFile);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Failed to upload new photo.");
+        setIsSaving(false);
+        return;
+      }
+      const photoPath = `card-images/${Date.now()}-${Math.random().toString(36).slice(2)}-${preparedPhoto.name}`;
+      const { error: uploadError } = await supabase.storage.from("card-images").upload(photoPath, preparedPhoto, {
         cacheControl: "31536000", // unique timestamped path, never overwritten -- safe to cache for a year
       });
       if (uploadError) {

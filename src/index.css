@@ -91,7 +91,6 @@ All colors MUST be HSL.
       url('/bg-pattern.jpg');
     background-repeat: no-repeat, no-repeat, no-repeat, repeat;
     background-size: auto, auto, auto, 700px;
-    background-attachment: fixed, fixed, fixed, fixed;
   }
 }
 

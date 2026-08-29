@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Camera, Loader2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { prepareImageForUpload } from "@/lib/imagePrep";
 import { toast } from "sonner";
 
 interface Props {
@@ -31,19 +32,25 @@ export function AdditionalPhotosField({ urls, onChange, hideLabel }: Props) {
   const handleFile = async (file: File | null) => {
     if (!file) return;
     setUploading(true);
-    const path = `card-images/${Date.now()}-${Math.random().toString(36).slice(2)}.${file.name.split(".").pop() || "jpg"}`;
-    const { error } = await supabase.storage.from("card-images").upload(path, file, {
-      cacheControl: "31536000", // unique timestamped path, never overwritten -- safe to cache for a year
-      upsert: false,
-    });
-    if (error) {
-      toast.error("Photo upload failed");
-    } else {
-      const { data } = supabase.storage.from("card-images").getPublicUrl(path);
-      onChange([...urls, data.publicUrl]);
+    try {
+      const prepared = await prepareImageForUpload(file);
+      const path = `card-images/${Date.now()}-${Math.random().toString(36).slice(2)}.${prepared.name.split(".").pop() || "jpg"}`;
+      const { error } = await supabase.storage.from("card-images").upload(path, prepared, {
+        cacheControl: "31536000", // unique timestamped path, never overwritten -- safe to cache for a year
+        upsert: false,
+      });
+      if (error) {
+        toast.error("Photo upload failed");
+      } else {
+        const { data } = supabase.storage.from("card-images").getPublicUrl(path);
+        onChange([...urls, data.publicUrl]);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Photo upload failed");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
     }
-    setUploading(false);
-    if (fileRef.current) fileRef.current.value = "";
   };
 
   return (

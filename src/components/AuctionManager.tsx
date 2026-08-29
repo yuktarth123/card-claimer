@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { prepareImageForUpload } from "@/lib/imagePrep";
 import { Database } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -275,8 +276,16 @@ export function AuctionManager({ cards }: { cards: DbCard[] }) {
     let video_url: string | null = existingVideoUrl;
 
     if (photoFile) {
-      const path = `card-images/${Date.now()}-${Math.random().toString(36).slice(2)}.${photoFile.name.split(".").pop() || "jpg"}`;
-      const { error: upErr } = await supabase.storage.from("card-images").upload(path, photoFile, { cacheControl: "3600", upsert: false });
+      let preparedPhoto: File;
+      try {
+        preparedPhoto = await prepareImageForUpload(photoFile);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Photo upload failed");
+        setPublishing(false);
+        return;
+      }
+      const path = `card-images/${Date.now()}-${Math.random().toString(36).slice(2)}.${preparedPhoto.name.split(".").pop() || "jpg"}`;
+      const { error: upErr } = await supabase.storage.from("card-images").upload(path, preparedPhoto, { cacheControl: "3600", upsert: false });
       if (upErr) {
         toast.error("Photo upload failed");
         setPublishing(false);
