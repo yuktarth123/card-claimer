@@ -147,6 +147,16 @@ export function AuctionCard({ item, sessionId, buyerName, buyerPhone, buyNowPric
                   </>
                 )}
               </p>
+            ) : item.bid_count > 0 ? (
+              // The stored row hasn't been finalized by sync_auction_statuses
+              // yet (winner_name/winner_amount lag the clock), but there was
+              // a bid -- show the current highest bidder as the winner
+              // instead of falsely claiming no one bid.
+              <p className="text-sm flex items-center gap-1.5">
+                <Trophy className="w-4 h-4 text-primary" />
+                <span className="font-semibold">{item.current_bid_name}</span> won for{" "}
+                <span className="font-bold">{CURRENCY}{Number(item.current_bid).toFixed(0)}</span>
+              </p>
             ) : (
               <p className="text-sm text-muted-foreground">No bids — unsold</p>
             )
